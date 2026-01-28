@@ -1,7 +1,10 @@
 #include "utilities.h"
 #include "constants.h"
+#include "data_structs.h"
 #include <syslog.h>
 #include <stdio.h>
+
+extern Client client_list[MAXCLIENTS];
 
 void notice(char* msg) {
     if (RUN_AS_DAEMON) {
@@ -24,4 +27,20 @@ void show_stats(int events, int conns) {
 
     sprintf(msg, "Events: %6d | Active connections: %6d", events, conns);
     notice(msg);
+}
+
+// finds the index of the client in the client_list
+// returns: idx if found, -1 if not.
+int client_lookup(int fd) {
+    for (int i=0; i < MAXCLIENTS; i++) {
+        if (client_list[i].fd == fd) {
+            return i;
+        }
+    }
+    return -1; // not found
+}
+
+// deletes a client from the client_list
+void client_remove(int idx) {
+    memset(&(client_list[idx]), 0x00, sizeof(Client));
 }

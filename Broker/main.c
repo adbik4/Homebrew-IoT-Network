@@ -18,6 +18,7 @@
 #include "setup.h"
 #include "utilities.h"
 #include "constants.h"
+#include "data_structs.h"
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -30,13 +31,20 @@
 
 static int  stat_events;
 static int  stat_active_conns;
+Client client_list[MAXCLIENTS];
 
 int main() {
     int discover_fd, listen_fd, epoll_fd;
     struct epoll_event event;
     struct epoll_event events[MAXEVENTS];
-    char buffer[MAXBUFSIZE];
+
+    char rx_buffer[MAXBUFSIZE];
+    char tx_buffer[MAXBUFSIZE];
     char msg[MAXMSGSIZE];
+
+    SensorData data;
+    SubscriptionRequest request;
+    int cli_idx;    // idx to the client list
 
     if (RUN_AS_DAEMON) {
         // transform the server into a daemon
@@ -97,11 +105,20 @@ int main() {
                 if (client_fd < 0)
                     continue;
 
-                event.events  = EPOLLIN;
+                event.events  = EPOLLIN; // | EPOLLOUT;
                 event.data.fd = client_fd;
                 epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_fd, &event);
-
+                
+                // add the new client to list
+                Client new_client = {
+                    .fd = client_fd,
+                    .ip = cliaddr.sin_addr,
+                    .is_subscriber = 0,
+                    .sub = NULL
+                };
+                client_list[stat_active_conns] = new_client;
                 stat_active_conns++;
+
                 show_stats(stat_events, stat_active_conns);
                 sprintf(msg, "Connection from %s", inet_ntoa(cliaddr.sin_addr));
                 notice(msg);
@@ -112,28 +129,49 @@ int main() {
                 struct sockaddr_storage peer;
                 socklen_t len = sizeof(peer);
 
-                ssize_t n = recvfrom(discover_fd, buffer, sizeof(buffer), 0, (struct sockaddr *)&peer, &len);
+                ssize_t n = recvfrom(discover_fd, rx_buffer, sizeof(rx_buffer), 0, (struct sockaddr *)&peer, &len);
                 if (n > 0) {
                     // respond for discovery
-                    sendto(discover_fd, buffer, n, 0, (struct sockaddr *)&peer, len);
+                    sendto(discover_fd, rx_buffer, n, 0, (struct sockaddr *)&peer, len);
                 }
                 show_stats(stat_events, stat_active_conns);
                 continue;
             }
             
             /* ---------- TCP client ---------- */
-            ssize_t n = read(fd, buffer, sizeof(buffer));
+            ssize_t n = read(fd, rx_buffer, sizeof(rx_buffer));
             if (n <= 0) {
                 close(fd);
+
                 stat_active_conns--;
                 show_stats(stat_events, stat_active_conns);
+
+                // remove the client from the list
+                cli_idx = client_lookup(fd);
+                sprintf(msg, "%s disconnected", inet_ntoa(client_list[cli_idx].ip));
+                notice(msg);
+                client_remove(cli_idx);
                 continue;
             }
 
-            // DO STH
+            // interpret the rx_buffer as SensorData
+            memcpy(&data, rx_buffer, sizeof(data));
+
+            if (data.id == 0xFF) {  // SUBSCRIBER
+                // reinterpret as SubscibtionRequest
+                memcpy(&request, rx_buffer, sizeof(data));
+
+                // fill in the subscriber data
+                cli_idx = client_lookup(fd);
+                if (cli_idx < 0) {
+                    error("Client index not found");
+                }
+                client_list[cli_idx].is_subscriber = 1;
+                client_list[cli_idx].sub = request.target_id;
+            } 
 
             // echo
-            write(fd, buffer, n);
+            write(fd, rx_buffer, n);
         }
     };
 

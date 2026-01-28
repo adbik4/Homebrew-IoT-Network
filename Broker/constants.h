@@ -6,6 +6,7 @@
 #define MAXQUEUE        16
 #define MAXBUFSIZE      64
 #define MAXMSGSIZE      64
+#define MAXCLIENTS      256
 
 #define UID             1000
 #define DISCOVERY_PORT  2137
