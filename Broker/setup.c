@@ -59,7 +59,8 @@ int daemon_init(const char *pname, int facility, uid_t uid) {
 int create_udp_discoverer(const int port) {
     int discover_fd;
     char msg[MAXMSGSIZE];
-    int reuse = 1;
+    int reuse;
+    unsigned char loop;
 
     if ((discover_fd = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0)) < 0) {
         snprintf(msg, MAXMSGSIZE, "UDP socket error : %s\n", strerror(errno));
@@ -67,11 +68,17 @@ int create_udp_discoverer(const int port) {
         return -1;
     }
 
+    // reuse this socket for multiple connections
+    reuse = 1;
     if ((setsockopt(discover_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse))) < 0) {
 		snprintf(msg, MAXMSGSIZE, "UDP setsockopt error : %s\n", strerror(errno));
         error(msg);
         return -1;
 	}
+
+    // ignore own messages
+    loop = 0;
+    setsockopt(discover_fd, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
 
     struct sockaddr_in addr = {
         .sin_family = AF_INET,
@@ -103,7 +110,7 @@ int create_tcp_listener(const int port) {
     int listen_fd;
 	struct sockaddr_in addr;
     char msg[MAXMSGSIZE];
-    int reuse = 1;
+    int reuse;
 	int errno;
 
     if ((listen_fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) < 0) {
@@ -112,7 +119,9 @@ int create_tcp_listener(const int port) {
         return -1;
     }
 
-	if ((setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse))) < 0) {
+    // reuse this socket for multiple connections
+	reuse = 1;
+    if ((setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse))) < 0) {
 		snprintf(msg, MAXMSGSIZE, "TCP setsockopt error : %s\n", strerror(errno));
         error(msg);
         return -1;

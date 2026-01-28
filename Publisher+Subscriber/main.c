@@ -179,7 +179,8 @@ int Connect() {
     struct ip_mreq mreq;
     char buffer[BUFFER_SIZE];
     struct timeval tv;
-    
+    unsigned char loop;
+
     // 1. Utwórz socket UDP do multicast
     udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
     if (udp_socket < 0) {
@@ -191,7 +192,11 @@ int Connect() {
     tv.tv_sec = 5;
     tv.tv_usec = 0;
     setsockopt(udp_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-    
+
+    // Ignoruj własne wiadomości
+    loop = 0;
+    setsockopt(udp_socket, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
+
     // Dołącz do grupy multicast
     memset(&multicast_addr, 0, sizeof(multicast_addr));
     multicast_addr.sin_family = AF_INET;
