@@ -36,8 +36,6 @@ int daemon_init(const char *pname, int facility, uid_t uid) {
 
 	/* child 2 continues... */
 
-	chdir("/");				/* change working directory - or chroot()*/
-
 	/* close off file descriptors */
 	for (i = 0; i < MAXFD; i++){
 		close(i);
