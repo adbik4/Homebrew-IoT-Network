@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
             uint16_t pressure = rand() % 300 + 10000; // 1000-1030 hPa (w dziesiątych)
             
             Publish(temp, pressure);
-            printf("Wysłano: ID=0x%02X, Temp=%u.%02u°C, Pressure=%u.%uhPa\n",
+            printf("Wysłano: ID=0x%02X | temp=%u.%02u°C | pressure=%u.%uhPa\n",
                    client_id, temp/100, temp%100, pressure/10, pressure%10);
             
             sleep(1);
@@ -306,8 +306,8 @@ void Publish(uint16_t temp, uint16_t pressure) {
     // Wysyłaj w odpowiedniej kolejności: ID, temp, pressure
     uint8_t buffer[5];
     buffer[0] = data.id;
-    memcpy(&buffer[1], &data.temperature, 2);
-    memcpy(&buffer[3], &data.pressure, 2);
+    memcpy(&buffer[1], &(data.temperature), sizeof(data.temperature));
+    memcpy(&buffer[3], &(data.pressure), sizeof(data.pressure));
     
     send(tcp_conn_socket, buffer, sizeof(buffer), 0);
 }

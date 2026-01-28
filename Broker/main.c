@@ -17,9 +17,11 @@
 
 #include "setup.h"
 #include "utilities.h"
+#include "database.h"
 #include "constants.h"
 #include "data_structs.h"
 
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/epoll.h>
@@ -28,23 +30,30 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <signal.h>
 
-static int  stat_events;
-static int  stat_active_conns;
+// globals
+static int  epoll_fd;
+static int  stat_events, stat_active_conns;
 Client client_list[MAXCLIENTS];
+char msg[MAXMSGSIZE];
+FILE *db;
+
+void SignalHandler(int sig);
 
 int main() {
-    int discover_fd, listen_fd, epoll_fd;
+    int discover_fd, listen_fd, cli_idx;
     struct epoll_event event;
     struct epoll_event events[MAXEVENTS];
-
     char rx_buffer[MAXBUFSIZE];
     char tx_buffer[MAXBUFSIZE];
-    char msg[MAXMSGSIZE];
 
     SensorData data;
     SubscriptionRequest request;
-    int cli_idx;    // idx to the client list
+
+    // singal handling registration
+    signal(SIGINT, SignalHandler);
+    signal(SIGTERM, SignalHandler);
 
     if (RUN_AS_DAEMON) {
         // transform the server into a daemon
@@ -83,6 +92,11 @@ int main() {
     event.data.fd = listen_fd;
     epoll_ctl(epoll_fd, EPOLL_CTL_ADD, listen_fd, &event);
 
+    // open the database
+    if (open_db() < 0) {
+        error("the database file couldn't be opened");
+    }
+
     // MAIN LOOP
     while (1) {
         int nready = epoll_wait(epoll_fd, events, MAXEVENTS, -1);
@@ -114,7 +128,7 @@ int main() {
                     .fd = client_fd,
                     .ip = cliaddr.sin_addr,
                     .is_subscriber = 0,
-                    .sub = NULL
+                    .sub = 0
                 };
                 client_list[stat_active_conns] = new_client;
                 stat_active_conns++;
@@ -139,27 +153,34 @@ int main() {
             }
             
             /* ---------- TCP client ---------- */
-            ssize_t n = read(fd, rx_buffer, sizeof(rx_buffer));
-            if (n <= 0) {
-                close(fd);
+            size_t received = 0;
+            while (received < 5) {
+                ssize_t n = read(fd, rx_buffer + received, 5 - received);
+                if (n <= 0) {
+                    // disconnect
+                    close(fd);
 
-                stat_active_conns--;
-                show_stats(stat_events, stat_active_conns);
+                    stat_active_conns--;
+                    show_stats(stat_events, stat_active_conns);
 
-                // remove the client from the list
-                cli_idx = client_lookup(fd);
-                sprintf(msg, "%s disconnected", inet_ntoa(client_list[cli_idx].ip));
-                notice(msg);
-                client_remove(cli_idx);
-                continue;
+                    // remove the client from the list
+                    cli_idx = client_lookup(fd);
+                    sprintf(msg, "%s disconnected", inet_ntoa(client_list[cli_idx].ip));
+                    notice(msg);
+                    client_remove(cli_idx);
+                    break;
+                }
+                received += n;
             }
 
             // interpret the rx_buffer as SensorData
-            memcpy(&data, rx_buffer, sizeof(data));
+            data.id = rx_buffer[0];
+            memcpy(&data.temperature, &rx_buffer[1], 2);
+            memcpy(&data.pressure, &rx_buffer[3], 2);
 
             if (data.id == 0xFF) {  // SUBSCRIBER
-                // reinterpret as SubscibtionRequest
-                memcpy(&request, rx_buffer, sizeof(data));
+                // reinterpret as SubscriptionRequest
+                memcpy(&request, rx_buffer, sizeof(request));
 
                 // fill in the subscriber data
                 cli_idx = client_lookup(fd);
@@ -169,13 +190,35 @@ int main() {
                 client_list[cli_idx].is_subscriber = 1;
                 client_list[cli_idx].sub = request.target_id;
             } 
-
-            // echo
-            write(fd, rx_buffer, n);
+            else {  // PUBLISHER
+                data.temperature = ntohs(data.temperature);
+                data.pressure = ntohs(data.pressure);
+                save2db(data);
+                sprintf(msg, 
+                    "Recieved: ID: 0x%02X | temp: %u.%02u°C | pressure: %u.%uhPa",
+                    data.id,
+                    data.temperature / 100, data.temperature % 100,
+                    data.pressure / 10, data.pressure % 10
+                );
+                notice(msg);
+                // sth else
+            }
         }
     };
 
     close(epoll_fd);
+    close_db();
     if (RUN_AS_DAEMON) {closelog ();}
     return 0;
+}
+
+
+void SignalHandler(int sig) {
+    sprintf(msg, "\nReieved signal %d, exiting program...", sig);
+    notice(msg);
+
+    close(epoll_fd);
+    close_db();
+    if (RUN_AS_DAEMON) {closelog ();}
+    exit(0);
 }

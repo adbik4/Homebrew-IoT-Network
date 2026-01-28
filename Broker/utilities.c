@@ -1,6 +1,7 @@
 #include "utilities.h"
 #include "constants.h"
 #include "data_structs.h"
+#include <memory.h>
 #include <syslog.h>
 #include <stdio.h>
 

@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -I.
 ELF_NAME = broker-daemon
-SRCS = main.c setup.c utilities.c constants.h data_structs.h
+SRCS = main.c setup.c utilities.c database.c constants.h data_structs.h
 
 all: $(ELF_NAME)
 
