@@ -8,6 +8,6 @@
 
 #define UID 1000
 #define DISCOVERY_PORT  2137
-#define LISTEN_PORT     9000
+#define LISTEN_PORT     2138
 
 #endif
