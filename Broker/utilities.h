@@ -3,5 +3,6 @@
 
 void error(char* msg);
 void notice(char* msg);
+void show_stats(int events, int conns);
 
 #endif

@@ -18,3 +18,10 @@ void error(char* msg) {
         fprintf(stderr, "%s\n", msg);
     }
 }
+
+void show_stats(int events, int conns) {
+    char msg[MAXMSGSIZE];
+
+    sprintf(msg, "Events: %6d | Active connections: %6d", events, conns);
+    notice(msg);
+}

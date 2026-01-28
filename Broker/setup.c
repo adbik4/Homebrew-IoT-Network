@@ -59,6 +59,7 @@ int daemon_init(const char *pname, int facility, uid_t uid) {
 int create_udp_discoverer(const int port) {
     int discover_fd;
     char msg[MAXMSGSIZE];
+    struct sockaddr_in addr;
     int reuse;
     unsigned char loop;
 
@@ -80,11 +81,10 @@ int create_udp_discoverer(const int port) {
     loop = 0;
     setsockopt(discover_fd, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
 
-    struct sockaddr_in addr = {
-        .sin_family = AF_INET,
-        .sin_port   = htons(port),
-        .sin_addr   = { htonl(INADDR_ANY) }
-    };
+	bzero(&addr, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_port   = htons(port);
+	addr.sin_addr.s_addr   = htonl(INADDR_ANY);
 
     if (bind(discover_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         snprintf(msg, MAXMSGSIZE, "UDP bind error : %s\n", strerror(errno));
@@ -98,7 +98,7 @@ int create_udp_discoverer(const int port) {
     mreq.imr_interface.s_addr = htonl(INADDR_ANY);
 
     if ((setsockopt(discover_fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq))) < 0) {
-		snprintf(msg, MAXMSGSIZE, "UDP mulitcast join error : %s\n", strerror(errno));
+		snprintf(msg, MAXMSGSIZE, "UDP multicast join error : %s\n", strerror(errno));
         error(msg);
         return -1;
 	}
@@ -133,7 +133,13 @@ int create_tcp_listener(const int port) {
 	addr.sin_addr.s_addr   = htonl(INADDR_ANY);
 
     if (bind(listen_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        snprintf(msg, MAXMSGSIZE, "TCP listen bind error : %s\n", strerror(errno));
+        snprintf(msg, MAXMSGSIZE, "TCP listen socket bind error : %s\n", strerror(errno));
+        error(msg);
+        return -1;
+    }
+    
+    if (listen(listen_fd, MAXQUEUE) < 0) {
+        snprintf(msg, MAXMSGSIZE, "TCP listen socket listen error : %s\n", strerror(errno));
         error(msg);
         return -1;
     }

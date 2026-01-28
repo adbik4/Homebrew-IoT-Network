@@ -23,6 +23,7 @@
 #include <sys/types.h>
 #include <sys/epoll.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -84,10 +85,6 @@ int main() {
 
         stat_events = nready;
 
-        sprintf(msg, "Events: %6d | Active connections: %6d", stat_events, stat_active_conns);
-        notice(msg);
-        sleep(100); // nonideal
-
         for (int i = 0; i < nready; i++) {
             int fd = events[i].data.fd;
 
@@ -105,6 +102,9 @@ int main() {
                 epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_fd, &event);
 
                 stat_active_conns++;
+                show_stats(stat_events, stat_active_conns);
+                sprintf(msg, "Connection from %s", inet_ntoa(cliaddr.sin_addr));
+                notice(msg);
                 continue;
             }
             /* ---------- UDP echo ---------- */
@@ -117,6 +117,7 @@ int main() {
                     // respond for discovery
                     sendto(discover_fd, buffer, n, 0, (struct sockaddr *)&peer, len);
                 }
+                show_stats(stat_events, stat_active_conns);
                 continue;
             }
             
@@ -125,6 +126,7 @@ int main() {
             if (n <= 0) {
                 close(fd);
                 stat_active_conns--;
+                show_stats(stat_events, stat_active_conns);
                 continue;
             }
 
