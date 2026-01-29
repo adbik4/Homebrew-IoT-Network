@@ -16,7 +16,7 @@
 #define _GNU_SOURCE
 
 #include "setup.h"
-#include "utilities.h"
+#include "broker_util.h"
 #include "database.h"
 #include "constants.h"
 #include "data_structs.h"

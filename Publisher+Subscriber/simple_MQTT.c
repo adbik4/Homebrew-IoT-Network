@@ -1,7 +1,7 @@
 #include "simple_MQTT.h"
 #include "data_structs.h"
 #include "constants.h"
-#include "utilities.h"
+#include "client_util.h"
 
 #include <stdbool.h>
 #include <arpa/inet.h>

@@ -1,8 +1,8 @@
 CC = gcc
-CFLAGS = -I. -I..
-ELF_NAME = broker-daemon
+CFLAGS = -I.
+ELF_NAME = client
 
-SRCS = main.c dht11.c simple_MQTT.c ../utilities.c
+SRCS = main.c dht11.c client_util.c simple_MQTT.c
 
 all: $(ELF_NAME)
 
