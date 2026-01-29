@@ -10,7 +10,7 @@ void PrintMeasurement(const SensorData *data) {
         data->temperature == 0 &&
         data->humidity == 0
     ) {
-      printf("Brak aktywności pod tym tematem\n");
+      printf("\nBrak aktywności pod tym tematem\n");
       printf("----------------------------------------\n");
     } 
     else {
