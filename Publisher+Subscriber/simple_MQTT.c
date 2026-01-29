@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <memory.h>
 #include <stdio.h>
-#include <stdlib.h>
+#include <unistd.h>
 
 extern int udp_socket, tcp_conn_socket, tcp_listen_socket;
 extern uint8_t client_id, target_id, subscription_action;
