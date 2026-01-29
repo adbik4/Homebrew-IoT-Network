@@ -182,7 +182,7 @@ int main() {
                 // interpret the rx_buffer as SensorData
                 data.id = rx_buffer[0]; 
                 memcpy(&data.temperature, &rx_buffer[1], 2);
-                memcpy(&data.pressure, &rx_buffer[3], 2);
+                memcpy(&data.humidity, &rx_buffer[3], 2);
 
                 if (data.id == 0xFF) {  // SUBSCRIBER
                     // reinterpret as SubscriptionRequest
@@ -198,13 +198,13 @@ int main() {
                 } 
                 else {  // PUBLISHER
                     data.temperature = ntohs(data.temperature);
-                    data.pressure = ntohs(data.pressure);
+                    data.humidity = ntohs(data.humidity);
                     save2db(data);  // save the data
                     sprintf(msg, 
-                        "Recieved: ID: 0x%02X | temp: %u.%02u°C | pressure: %u.%uhPa",
+                        "Recieved: ID: 0x%02X | temp: %u.%02u°C | humidity: %u.%u",
                         data.id,
                         data.temperature / 100, data.temperature % 100,
-                        data.pressure / 10, data.pressure % 10
+                        data.humidity / 10, data.humidity % 10
                     );
                     notice(msg);
                 }
@@ -218,12 +218,12 @@ int main() {
                     response.id = 69;
                     response.timestamp = time(NULL);
                     response.temperature = htons(420);
-                    response.pressure = htons(6767);
+                    response.humidity = htons(6767);
 
                     tx_buffer[0] = response.id;
                     memcpy(&tx_buffer[1], &response.timestamp, 8);
                     memcpy(&tx_buffer[9], &response.temperature, 2);
-                    memcpy(&tx_buffer[11], &response.pressure, 2);
+                    memcpy(&tx_buffer[11], &response.humidity, 2);
 
                     write(fd, tx_buffer, sizeof(tx_buffer));
                 }

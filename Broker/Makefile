@@ -1,12 +1,18 @@
 CC = gcc
-CFLAGS = -I.
+CFLAGS = -I. -I..
 ELF_NAME = broker-daemon
-SRCS = main.c setup.c utilities.c database.c constants.h data_structs.h wiringPi.h
+
+SRCS = main.c setup.c database.c ../utilities.c
+OBJS = $(SRCS:.c=.o)
+
 all: $(ELF_NAME)
 
-$(ELF_NAME): $(SRCS)
+$(ELF_NAME): $(OBJS)
 	mkdir -p build
-	$(CC) $(CFLAGS) $(SRCS) -o build/$(ELF_NAME)
+	$(CC) $(OBJS) -o build/$(ELF_NAME)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f build/$(ELF_NAME)
+	rm -f $(OBJS) build/$(ELF_NAME)

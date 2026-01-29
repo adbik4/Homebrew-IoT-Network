@@ -18,7 +18,7 @@ int open_db() {
     // if file is empty
     fseek(db, 0, SEEK_END);
     if (ftell(db) == 0) {
-        fprintf(db, "Id;Timestamp;Temperature;Pressure\n"); // insert header
+        fprintf(db, "Id;Timestamp;Temperature;Humidity\n"); // insert header
     }
 
     return 0;
@@ -32,7 +32,7 @@ void save2db(SensorData data) {
         data.id,
         time(NULL), // current time (seconds since epoch)
         data.temperature,
-        data.pressure
+        data.humidity
     );
 }
 

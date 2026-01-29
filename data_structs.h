@@ -16,7 +16,7 @@ typedef struct {
 typedef struct {
     uint8_t id;
     uint16_t temperature;
-    uint16_t pressure;
+    uint16_t humidity;
 } SensorData;
 
 typedef struct {
@@ -30,7 +30,7 @@ typedef struct {
     uint8_t id;
     time_t timestamp;
     uint16_t temperature;
-    uint16_t pressure;
+    uint16_t humidity;
 } MeasurementData;
 
 #endif

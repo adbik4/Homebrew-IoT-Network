@@ -5,7 +5,7 @@
 
 #define RUN_AS_DAEMON   0
 #define MAXEVENTS       1000
-#define MAXQUEUE        16
+#define MAXQUEUE        5
 #define MAXRXSIZE       5
 #define MAXTXSIZE      1024
 #define MAXMSGSIZE      128
@@ -14,5 +14,7 @@
 #define UID             1000
 #define DISCOVERY_PORT  2137
 #define LISTEN_PORT     2138
+#define MULTICAST_GROUP "239.0.0.1"
+#define SPECIAL_LISTEN_ID 0xFF
 
 #endif
