@@ -102,9 +102,7 @@ int main(int argc, char *argv[]) {
     // Połączenie z serwerem
     if (Connect() != 0) {
         fprintf(stderr, "Nie udało się połączyć z serwerem\n");
-        if (is_publisher) {
-            DHT11_Close();
-        }
+    }
         return 1;
     }
     
@@ -172,8 +170,6 @@ int main(int argc, char *argv[]) {
             sleep(1); // Ogólny cykl co sekundę
         }
         
-        // Zamknięcie czujnika
-        DHT11_Close();
     } else {
         // Tryb nasłuchiwania - odbieraj dane
         printf("Nasłuchiwanie danych dla ID 0x%02X...\n", target_id);
