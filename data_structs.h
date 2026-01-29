@@ -6,6 +6,8 @@
 #define NAME_LEN 64
 #define MAX_SUBS 8
 
+#pragma pack(push, 1)
+
 typedef struct {
     int fd;                     // TCP handle
     struct in_addr ip;               // ip
@@ -32,5 +34,7 @@ typedef struct {
     uint16_t temperature;
     uint16_t humidity;
 } MeasurementData;
+
+#pragma(pop)
 
 #endif

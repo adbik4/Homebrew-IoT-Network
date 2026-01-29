@@ -7,7 +7,7 @@
 #define MAXEVENTS       1000
 #define MAXQUEUE        5
 #define MAXRXSIZE       5
-#define MAXTXSIZE      1024
+#define MAXTXSIZE      13
 #define MAXMSGSIZE      128
 #define MAXCLIENTS      256
 
