@@ -205,7 +205,7 @@ int main() {
                     sprintf(msg, 
                         "Recieved: ID: 0x%02X | temp: %u.%02u°C | humidity: %u.%u%%",
                         data.id,
-                        data.temperature / 100, data.temperature % 100,
+                        data.temperature / 10, data.temperature % 10,
                         data.humidity / 10, data.humidity % 10
                     );
                     notice(msg);

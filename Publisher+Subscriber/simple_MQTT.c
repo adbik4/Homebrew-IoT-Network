@@ -136,20 +136,20 @@ void Disconnect() {
     }
 }
 
-// Funkcja Publish - wysyła dane do serwera (ZAMIENIONE: pressure -> humidity)
+// Funkcja Publish - wysyła dane do serwera
 void Publish(uint16_t temp, uint16_t humidity) {
     if (tcp_conn_socket < 0) return;
     
     SensorData data;
     data.id = client_id;
     data.temperature = htons(temp);
-    data.humidity = htons(humidity);  // ZAMIENIONE: pressure -> humidity
+    data.humidity = htons(humidity);
     
     // Wysyłaj w odpowiedniej kolejności: ID, temp, humidity
     uint8_t buffer[MAXRXSIZE];
     buffer[0] = data.id;
     memcpy(&buffer[1], &data.temperature, 2);
-    memcpy(&buffer[3], &data.humidity, 2);  // ZAMIENIONE: pressure -> humidity
+    memcpy(&buffer[3], &data.humidity, 2);
     
     send(tcp_conn_socket, buffer, sizeof(buffer), 0);
 }
