@@ -13,6 +13,7 @@
 #include <sys/time.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <wiringPi.h>
 
 // Definicje stałych
 #define MULTICAST_GROUP "239.0.0.1"
@@ -22,26 +23,30 @@
 #define SPECIAL_LISTEN_ID 0xFF
 #define LISTEN_QUEUE_SIZE 5
 
+// Definicje dla DHT11
+#define DHT11_PIN 4  // GPIO4 (wiringPi numeracja), fizyczny pin 16 na Raspberry Pi
+#define DHT11_MAX_TIMINGS 85
+#define DHT11_WAIT_TIME 2000  // 2 sekundy między odczytami
+
 // Struktury danych
 #pragma pack(push, 1)
 typedef struct {
     uint8_t id;
     uint16_t temperature;
-    uint16_t pressure;
+    uint16_t humidity;  // ZAMIENIONE: pressure -> humidity
 } SensorData;
 
 typedef struct {
     uint8_t special_id;      // 0xFF dla subskrypcji
     uint8_t target_id;       // ID do nasłuchiwania
     uint8_t action;          // 0=start, 1=stop
-    uint16_t reserved;
 } SubscriptionRequest;
 
 typedef struct {
     uint8_t id;
-    time_t timestamp;
     uint16_t temperature;
-    uint16_t pressure;
+    uint16_t humidity;       // ZAMIENIONE: pressure -> humidity
+    time_t timestamp;
 } MeasurementData;
 #pragma pack(pop)
 
@@ -58,13 +63,17 @@ bool is_publisher = false;
 // Funkcje prototypy
 int Connect();
 void Disconnect();
-void Publish(uint16_t temp, uint16_t pressure);
+void Publish(uint16_t temp, uint16_t humidity);  // ZAMIENIONE: pressure -> humidity
 void Subscribe(uint8_t target_id, uint8_t action);
 void HandleIncomingData();
-void FindServer();
 void PrintMeasurement(const MeasurementData *data);
 void SignalHandler(int sig);
 int WaitForServerConnection();
+
+// Funkcje do obsługi czujnika DHT11
+int DHT11_Init();
+void DHT11_Close();
+int DHT11_ReadSensor(float *temperature, float *humidity);
 
 int main(int argc, char *argv[]) {
     // Rejestracja handlera sygnałów
@@ -94,6 +103,18 @@ int main(int argc, char *argv[]) {
         is_publisher = true;
         client_id = id1;
         printf("Klient publikujący z ID: 0x%02X\n", client_id);
+        
+        // Inicjalizacja wiringPi i czujnika DHT11
+        printf("Inicjalizacja wiringPi i czujnika DHT11...\n");
+        if (DHT11_Init() != 0) {
+            fprintf(stderr, "Błąd: Nie udało się zainicjalizować wiringPi lub czujnika DHT11\n");
+            fprintf(stderr, "Upewnij się, że:\n");
+            fprintf(stderr, "1. Czujnik DHT11 jest podłączony do pinu GPIO4 (fizyczny pin 16)\n");
+            fprintf(stderr, "2. Zainstalowano wiringPi: sudo apt-get install wiringpi\n");
+            fprintf(stderr, "3. Program jest uruchomiony z uprawnieniami sudo\n");
+            return 1;
+        }
+        printf("Czujnik DHT11 zainicjalizowany pomyślnie na pinie %d\n", DHT11_PIN);
     } else {
         // Tryb nasłuchiwania - wymagane 3 argumenty dodatkowe (razem 4)
         if (argc != 4) {
@@ -124,6 +145,9 @@ int main(int argc, char *argv[]) {
     // Połączenie z serwerem
     if (Connect() != 0) {
         fprintf(stderr, "Nie udało się połączyć z serwerem\n");
+        if (is_publisher) {
+            DHT11_Close();
+        }
         return 1;
     }
     
@@ -145,18 +169,54 @@ int main(int argc, char *argv[]) {
     
     // Główna pętla programu
     if (is_publisher) {
-        // Tryb publikowania - wysyłaj dane co sekundę
-        srand(time(NULL));
+        // Tryb publikowania - odczytuj dane z czujnika i wysyłaj
+        printf("Rozpoczynanie odczytu danych z czujnika DHT11...\n");
+        printf("Naciśnij Ctrl+C aby zakończyć\n");
+        
+        static uint32_t last_read_time = 0;
+        
         while (is_running) {
-            uint16_t temp = rand() % 500 + 2000;  // 20.0-25.0°C (w setnych)
-            uint16_t pressure = rand() % 300 + 10000; // 1000-1030 hPa (w dziesiątych)
+            float temperature_c = 0.0f;
+            float humidity_percent = 0.0f;
             
-            Publish(temp, pressure);
-            printf("Wysłano: ID=0x%02X | temp=%u.%02u°C | pressure=%u.%uhPa\n",
-                   client_id, temp/100, temp%100, pressure/10, pressure%10);
+            // Sprawdź, czy minęło wystarczająco czasu od ostatniego odczytu DHT11
+            uint32_t current_time = millis();
+            if (current_time - last_read_time >= DHT11_WAIT_TIME) {
+                // Odczyt danych z czujnika DHT11
+                if (DHT11_ReadSensor(&temperature_c, &humidity_percent) == 0) {
+                    printf("Odczytano: Temp=%.1f°C, Wilgotność=%.1f%%\n", temperature_c, humidity_percent);
+                    last_read_time = current_time;
+                } else {
+                    fprintf(stderr, "Błąd odczytu czujnika DHT11! Używam ostatniej wartości.\n");
+                    // W przypadku błędu, używamy temperatury 25.0°C i wilgotności 50%
+                    temperature_c = 25.0f;
+                    humidity_percent = 50.0f;
+                }
+                
+                // Przeliczanie jednostek
+                // Temperatura: stopnie Celsjusza * 10 (dokładność 0.1°C)
+                uint16_t temp_int = (uint16_t)(temperature_c * 10.0f);
+                // Wilgotność: procenty * 10 (dokładność 0.1%)
+                uint16_t humidity_int = (uint16_t)(humidity_percent * 10.0f);
+                
+                // Ograniczenie wartości do zakresu (0-1000 = 0-100%)
+                if (humidity_int > 1000) humidity_int = 1000;
+                
+                Publish(temp_int, humidity_int);
+                
+                printf("Wysłano: ID=0x%02X, Temp=%.1f°C, Humidity=%.1f%%\n",
+                       client_id, temperature_c, humidity_percent);
+            } else {
+                // Czekaj do następnego odczytu
+                usleep(100000); // 100ms
+                continue;
+            }
             
-            sleep(1);
+            sleep(1); // Ogólny cykl co sekundę
         }
+        
+        // Zamknięcie czujnika
+        DHT11_Close();
     } else {
         // Tryb nasłuchiwania - odbieraj dane
         printf("Nasłuchiwanie danych dla ID 0x%02X...\n", target_id);
@@ -174,14 +234,100 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-// Funkcja Connect - wysyła ID przez multicast i nasłuchuje na połączenie TCP od serwera
+// Funkcje do obsługi czujnika DHT11
+
+// Inicjalizacja wiringPi i czujnika DHT11
+int DHT11_Init() {
+    // Inicjalizacja wiringPi
+    if (wiringPiSetup() == -1) {
+        perror("wiringPiSetup");
+        return -1;
+    }
+    
+    // Ustawienie pinu DHT11 jako wyjście na początku
+    pinMode(DHT11_PIN, OUTPUT);
+    digitalWrite(DHT11_PIN, HIGH);
+    
+    return 0;
+}
+
+// Odczyt danych z czujnika DHT11
+int DHT11_ReadSensor(float *temperature, float *humidity) {
+    uint8_t laststate = HIGH;
+    uint8_t counter = 0;
+    uint8_t j = 0, i;
+    int dht11_dat[5] = {0, 0, 0, 0, 0};
+    
+    // Przygotowanie pinu
+    pinMode(DHT11_PIN, OUTPUT);
+    digitalWrite(DHT11_PIN, LOW);
+    delay(18);  // 18ms zgodnie z dokumentacją DHT11
+    
+    // Przełączenie pinu na wejście z podciągnięciem do wysokiego stanu
+    pinMode(DHT11_PIN, INPUT);
+    
+    // Oczekiwanie na odpowiedź czujnika
+    for (i = 0; i < DHT11_MAX_TIMINGS; i++) {
+        counter = 0;
+        while (digitalRead(DHT11_PIN) == laststate) {
+            counter++;
+            delayMicroseconds(1);
+            if (counter == 255) {
+                break;
+            }
+        }
+        laststate = digitalRead(DHT11_PIN);
+        
+        if (counter == 255) {
+            break;
+        }
+        
+        // Ignorujemy pierwsze 3 przejścia
+        if ((i >= 4) && (i % 2 == 0)) {
+            // Każdy bit jest kodowany długością stanu wysokiego
+            dht11_dat[j / 8] <<= 1;
+            if (counter > 16) {
+                dht11_dat[j / 8] |= 1;
+            }
+            j++;
+        }
+    }
+    
+    // Sprawdzenie poprawności odczytu (suma kontrolna)
+    if ((j >= 40) && 
+        (dht11_dat[4] == ((dht11_dat[0] + dht11_dat[1] + dht11_dat[2] + dht11_dat[3]) & 0xFF))) {
+        // Konwersja danych
+        *humidity = (float)dht11_dat[0];  // Wilgotność w %
+        *temperature = (float)dht11_dat[2];  // Temperatura w °C
+        
+        // DHT11 może zwracać ujemną temperaturę (w formacie uzupełnienia do dwóch)
+        if (dht11_dat[2] & 0x80) {
+            *temperature = -(float)(dht11_dat[2] & 0x7F);
+        }
+        
+        // Ograniczenie zakresu wilgotności do 0-100%
+        if (*humidity < 0) *humidity = 0;
+        if (*humidity > 100) *humidity = 100;
+        
+        return 0;  // Sukces
+    }
+    
+    return -1;  // Błąd odczytu
+}
+
+// Zamknięcie czujnika (zwolnienie zasobów)
+void DHT11_Close() {
+    // Dla DHT11 nie ma specjalnych operacji do wykonania
+    // wiringPi nie wymaga specjalnego zamykania
+}
+
+// Funkcja Connect - odnajduje serwer przez UDP multicast i nawiązuje połączenie TCP
 int Connect() {
     struct sockaddr_in multicast_addr;
     struct ip_mreq mreq;
     char buffer[BUFFER_SIZE];
     struct timeval tv;
-    unsigned char loop;
-
+    
     // 1. Utwórz socket UDP do multicast
     udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
     if (udp_socket < 0) {
@@ -195,9 +341,9 @@ int Connect() {
     setsockopt(udp_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
     // Ignoruj własne wiadomości
-    loop = 0;
+    int loop = 0;
     setsockopt(udp_socket, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
-
+    
     // Dołącz do grupy multicast
     memset(&multicast_addr, 0, sizeof(multicast_addr));
     multicast_addr.sin_family = AF_INET;
@@ -270,7 +416,6 @@ int Connect() {
     }
 }
 
-
 // Funkcja Disconnect - zamyka połączenia
 void Disconnect() {
     if (tcp_conn_socket >= 0) {
@@ -295,20 +440,20 @@ void Disconnect() {
     }
 }
 
-// Funkcja Publish - wysyła dane do serwera
-void Publish(uint16_t temp, uint16_t pressure) {
+// Funkcja Publish - wysyła dane do serwera (ZAMIENIONE: pressure -> humidity)
+void Publish(uint16_t temp, uint16_t humidity) {
     if (tcp_conn_socket < 0) return;
     
     SensorData data;
     data.id = client_id;
     data.temperature = htons(temp);
-    data.pressure = htons(pressure);
+    data.humidity = htons(humidity);  // ZAMIENIONE: pressure -> humidity
     
-    // Wysyłaj w odpowiedniej kolejności: ID, temp, pressure
+    // Wysyłaj w odpowiedniej kolejności: ID, temp, humidity
     uint8_t buffer[5];
     buffer[0] = data.id;
     memcpy(&buffer[1], &data.temperature, 2);
-    memcpy(&buffer[3], &data.pressure, 2);
+    memcpy(&buffer[3], &data.humidity, 2);  // ZAMIENIONE: pressure -> humidity
     
     send(tcp_conn_socket, buffer, sizeof(buffer), 0);
 }
@@ -323,11 +468,10 @@ void Subscribe(uint8_t target_id, uint8_t action) {
     req.action = action; // 0=start, 1=stop
     
     // Wysyłaj w odpowiedniej kolejności
-    uint8_t buffer[5];
+    uint8_t buffer[3];
     buffer[0] = req.special_id;
     buffer[1] = req.target_id;
     buffer[2] = req.action;
-    memcpy(&buffer[3], &req.reserved, 2);
     
     int bytes_sent = send(tcp_conn_socket, buffer, sizeof(buffer), 0);
     
@@ -364,7 +508,7 @@ void HandleIncomingData() {
         if (n == sizeof(MeasurementData)) {
             // Konwersja z sieciowej kolejności bajtów
             data.temperature = ntohs(data.temperature);
-            data.pressure = ntohs(data.pressure);
+            data.humidity = ntohs(data.humidity);  // ZAMIENIONE: pressure -> humidity
             data.timestamp = ntohl(data.timestamp);
             
             PrintMeasurement(&data);
@@ -379,7 +523,7 @@ void HandleIncomingData() {
     }
 }
 
-// Funkcja PrintMeasurement - wyświetla odebrane dane pomiarowe
+// Funkcja PrintMeasurement - wyświetla odebrane dane pomiarowe (ZAMIENIONE: pressure -> humidity)
 void PrintMeasurement(const MeasurementData *data) {
     char time_buf[64];
     struct tm *timeinfo;
@@ -389,8 +533,8 @@ void PrintMeasurement(const MeasurementData *data) {
     
     printf("Odebrano pomiar:\n");
     printf("  ID źródła: 0x%02X\n", data->id);
-    printf("  Temperatura: %u.%02u°C\n", data->temperature/100, data->temperature%100);
-    printf("  Ciśnienie: %u.%uhPa\n", data->pressure/10, data->pressure%10);
+    printf("  Temperatura: %u.%01u°C\n", data->temperature/10, data->temperature%10);
+    printf("  Wilgotność: %u.%01u%%\n", data->humidity/10, data->humidity%10);  // ZAMIENIONE: pressure -> humidity
     printf("  Czas pomiaru: %s\n", time_buf);
     printf("----------------------------------------\n");
 }
