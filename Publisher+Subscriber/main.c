@@ -28,10 +28,6 @@ bool is_publisher = false;
 
 void SignalHandler(int sig);
 
-int WaitForServerConnection();
-void HandleIncomingData();
-void PrintMeasurement(const MeasurementData *data);
-
 int main(int argc, char *argv[]) {
     // Rejestracja handlera sygnałów
     signal(SIGINT, SignalHandler);

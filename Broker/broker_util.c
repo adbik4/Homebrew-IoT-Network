@@ -3,6 +3,7 @@
 #include <memory.h>
 #include <syslog.h>
 #include <stdio.h>
+#include <unistd.h>
 
 extern Client client_list[MAXCLIENTS];
 extern SensorData last_data[MAXIDCOUNT];
