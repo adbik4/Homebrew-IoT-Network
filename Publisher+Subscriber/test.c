@@ -339,6 +339,10 @@ int Connect() {
     tv.tv_sec = 5;
     tv.tv_usec = 0;
     setsockopt(udp_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+    // Ignoruj własne wiadomości
+    loop = 0;
+    setsockopt(udp_socket, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
     
     // Dołącz do grupy multicast
     memset(&multicast_addr, 0, sizeof(multicast_addr));
