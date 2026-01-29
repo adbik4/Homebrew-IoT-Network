@@ -4,7 +4,7 @@
 // Inicjalizacja wiringPi i czujnika DHT11
 int DHT11_Init() {
     // Inicjalizacja wiringPi
-    if (wiringPiSetup() == -1) {
+    if (wiringPiSetupPinType(WPI_PIN_PHYS) == -1) {
         perror("wiringPiSetup");
         return -1;
     }
