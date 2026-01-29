@@ -55,11 +55,11 @@ int DHT11_ReadSensor(float *temperature, float *humidity){
 		dht11_dat[j] = ((1000000 * return_of_sig.tv_sec + return_of_sig.tv_usec) - time_in_micros) > 50;
 	}
 	
-	int byte1 = getByte(1, buf);
-	int byte2 = getByte(2, buf);
-	int byte3 = getByte(3, buf);
-	int byte4 = getByte(4, buf);
-	int byte5 = getByte(5, buf);
+	int byte1 = getByte(1, dht11_dat);
+	int byte2 = getByte(2, dht11_dat);
+	int byte3 = getByte(3, dht11_dat);
+	int byte4 = getByte(4, dht11_dat);
+	int byte5 = getByte(5, dht11_dat);
 	
 	pinMode(DHT11_PIN, OUTPUT);
 	digitalWrite(DHT11_PIN, HIGH);
