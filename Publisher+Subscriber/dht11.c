@@ -1,6 +1,7 @@
 #include "dht11.h"
 #include <wiringPi.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <sys/time.h>
 
 // Inicjalizacja wiringPi i czujnika DHT11
