@@ -28,13 +28,6 @@ typedef struct {
     uint16_t reserved;
 } SubscriptionRequest;
 
-typedef struct {
-    uint8_t id;
-    time_t timestamp;
-    uint16_t temperature;
-    uint16_t humidity;
-} MeasurementData;
-
 #pragma(pop)
 
 #endif

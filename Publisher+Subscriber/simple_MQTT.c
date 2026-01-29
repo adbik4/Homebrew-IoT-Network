@@ -186,7 +186,7 @@ void Subscribe(uint8_t target_id, uint8_t action) {
 void HandleIncomingData() {
     if (tcp_conn_socket < 0) return;
     
-    MeasurementData data;
+    SensorData data;
     fd_set readfds;
     struct timeval tv;
     
@@ -199,13 +199,12 @@ void HandleIncomingData() {
     int activity = select(tcp_conn_socket + 1, &readfds, NULL, NULL, &tv);
     
     if (activity > 0 && FD_ISSET(tcp_conn_socket, &readfds)) {
-        int n = recv(tcp_conn_socket, &data, sizeof(MeasurementData), 0);
+        int n = recv(tcp_conn_socket, &data, sizeof(SensorData), 0);
         
-        if (n == sizeof(MeasurementData)) {
+        if (n == sizeof(SensorData)) {
             // Konwersja z sieciowej kolejności bajtów
             data.temperature = ntohs(data.temperature);
-            data.humidity = ntohs(data.humidity);  // ZAMIENIONE: pressure -> humidity
-            data.timestamp = ntohl(data.timestamp);
+            data.humidity = ntohs(data.humidity);
             
             PrintMeasurement(&data);
         } else if (n == 0) {

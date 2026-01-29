@@ -2,6 +2,6 @@
 #define UTIL_H
 #include "data_structs.h"
 
-void PrintMeasurement(const MeasurementData *data);
+void PrintMeasurement(const SensorData *data);
 
 #endif
