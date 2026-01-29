@@ -10,7 +10,7 @@
 // Funkcje do obsługi czujnika DHT11
 
 int DHT11_Init();
-uint8_t getByte(int b, int buf[]);
+int getByte(int b, int buf[]);
 int DHT11_ReadSensor(float *temperature, float *humidity);
 
 #endif
