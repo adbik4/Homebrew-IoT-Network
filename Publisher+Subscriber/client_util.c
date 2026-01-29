@@ -1,6 +1,7 @@
 #include "client_util.h"
 #include "data_structs.h"
 #include <time.h>
+#include <stdio.h>
 
 // Funkcja PrintMeasurement - wyświetla odebrane dane pomiarowe (ZAMIENIONE: pressure -> humidity)
 void PrintMeasurement(const MeasurementData *data) {
