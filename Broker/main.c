@@ -38,17 +38,17 @@ static int  epoll_fd;
 static int  stat_events, stat_active_conns;
 Client client_list[MAXCLIENTS];
 char msg[MAXMSGSIZE];
+
+SensorData last_data[MAXIDCOUNT];
 FILE *db;
 
 void SignalHandler(int sig);
 
 int main() {
-    int discover_fd, listen_fd, cli_idx;
-    struct epoll_event event;
+    int discover_fd, listen_fd;
     struct epoll_event events[MAXEVENTS];
 
     char rx_buffer[MAXRXSIZE];
-    char tx_buffer[MAXTXSIZE];
 
     SensorData data;
     SubscriptionRequest request;
@@ -86,6 +86,8 @@ int main() {
     }
     
     // register with epoll
+    struct epoll_event event;
+    bzero(&event, sizeof(event));
     event.events = EPOLLIN;
     
     event.data.fd = discover_fd;
@@ -166,7 +168,7 @@ int main() {
                     show_stats(stat_events, stat_active_conns);
 
                     // remove the client from the list
-                    cli_idx = client_lookup(fd);
+                    int cli_idx = client_lookup(fd);
                     sprintf(msg, "%s disconnected", inet_ntoa(client_list[cli_idx].ip));
                     info(msg);
                     client_remove(cli_idx);
@@ -191,12 +193,14 @@ int main() {
                     request.action = rx_buffer[2];
 
                     // fill in the subscriber data
-                    cli_idx = client_lookup(fd);
+                    int cli_idx = client_lookup(fd);
                     if (cli_idx < 0) {
                         error("Client index not found");
                     }
                     client_list[cli_idx].is_subscriber = 1;
                     client_list[cli_idx].sub = request.target_id;
+
+                    notify_subscriber(fd, request.target_id);
                 } 
                 else {  // PUBLISHER
                     data.temperature = ntohs(data.temperature);
@@ -209,25 +213,9 @@ int main() {
                         data.humidity / 10, data.humidity % 10
                     );
                     notice(msg);
-                }
 
-                /* ---------- Notify Subscribers ---------- */
-                cli_idx = client_lookup(fd);
-                if (client_list[cli_idx].is_subscriber) {
-
-                    // mock response for DEBUG only
-                    MeasurementData response;
-                    response.id = 69;
-                    response.timestamp = htonl(time(NULL));
-                    response.temperature = htons(420);
-                    response.humidity = htons(6767);
-
-                    tx_buffer[0] = response.id;
-                    memcpy(&tx_buffer[1], &response.timestamp, 8);
-                    memcpy(&tx_buffer[9], &response.temperature, 2);
-                    memcpy(&tx_buffer[11], &response.humidity, 2);
-
-                    write(fd, tx_buffer, sizeof(tx_buffer));
+                    last_data[data.id] = data;
+                    notify_all_subscribers(data.id);
                 }
             }
         }

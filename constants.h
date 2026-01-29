@@ -7,9 +7,10 @@
 #define MAXEVENTS       1000
 #define MAXQUEUE        5
 #define MAXRXSIZE       5
-#define MAXTXSIZE      13
+#define MAXTXSIZE       13
 #define MAXMSGSIZE      128
-#define MAXCLIENTS      256
+#define MAXIDCOUNT      255
+#define MAXCLIENTS      1024
 
 #define UID             1000
 #define DISCOVERY_PORT  2137
