@@ -386,8 +386,8 @@ int Connect() {
                inet_ntoa(server_addr.sin_addr), ntohs(server_addr.sin_port));
         
         // 4. Utwórz połączenie TCP z serwerem
-        tcp_socket = socket(AF_INET, SOCK_STREAM, 0);
-        if (tcp_socket < 0) {
+        tcp_conn_socket = socket(AF_INET, SOCK_STREAM, 0);
+        if (tcp_conn_socket < 0) {
             perror("socket TCP");
             close(udp_socket);
             return -1;
@@ -396,9 +396,9 @@ int Connect() {
         // Połącz z serwerem (używamy innego portu dla TCP)
         server_addr.sin_port = htons(TCP_PORT);
         
-        if (connect(tcp_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        if (connect(tcp_conn_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
             perror("connect TCP");
-            close(tcp_socket);
+            close(tcp_conn_socket);
             close(udp_socket);
             return -1;
         }
