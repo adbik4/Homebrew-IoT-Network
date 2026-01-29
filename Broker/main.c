@@ -201,7 +201,7 @@ int main() {
                     data.humidity = ntohs(data.humidity);
                     save2db(data);  // save the data
                     sprintf(msg, 
-                        "Recieved: ID: 0x%02X | temp: %u.%02u°C | humidity: %u.%u",
+                        "Recieved: ID: 0x%02X | temp: %u.%02u°C | humidity: %u.%u%%",
                         data.id,
                         data.temperature / 100, data.temperature % 100,
                         data.humidity / 10, data.humidity % 10

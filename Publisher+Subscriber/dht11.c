@@ -1,5 +1,7 @@
 #include "dht11.h"
 #include <wiringPi.h>
+#include <stdio.h>
+#include <stdint.h>
 
 // Inicjalizacja wiringPi i czujnika DHT11
 int DHT11_Init() {

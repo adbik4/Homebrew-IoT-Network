@@ -5,7 +5,7 @@
 
 #define DHT11_PIN 22  // GPIO4 (wiringPi numeracja), fizyczny pin 16 na Raspberry Pi
 #define DHT11_MAX_TIMINGS 85
-#define DHT11_WAIT_TIME 2000  // 2 sekundy między odczytami
+#define DHT11_WAIT_TIME 2  // 2 sekundy między odczytami
 
 // Funkcje do obsługi czujnika DHT11
 

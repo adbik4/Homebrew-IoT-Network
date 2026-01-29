@@ -137,7 +137,7 @@ int main(int argc, char *argv[]) {
             float humidity_percent = 0.0f;
             
             // Sprawdź, czy minęło wystarczająco czasu od ostatniego odczytu DHT11
-            uint32_t current_time = millis();
+            uint32_t current_time = time(NULL);
             if (current_time - last_read_time >= DHT11_WAIT_TIME) {
                 // Odczyt danych z czujnika DHT11
                 if (DHT11_ReadSensor(&temperature_c, &humidity_percent) == 0) {
