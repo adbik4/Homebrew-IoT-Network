@@ -321,9 +321,9 @@ void DHT11_Close() {
     // wiringPi nie wymaga specjalnego zamykania
 }
 
-// Funkcja Connect - wysyła ID przez multicast i nasłuchuje na połączenie TCP od serwera
+// Funkcja Connect - odnajduje serwer przez UDP multicast i nawiązuje połączenie TCP
 int Connect() {
-    struct sockaddr_in multicast_addr, tcp_addr;
+    struct sockaddr_in multicast_addr;
     struct ip_mreq mreq;
     char buffer[BUFFER_SIZE];
     struct timeval tv;
@@ -335,12 +335,12 @@ int Connect() {
         return -1;
     }
     
-    // Ustaw timeout na odbiór (do ewentualnej odpowiedzi UDP)
-    tv.tv_sec = 2;
+    // Ustaw timeout na odbiór
+    tv.tv_sec = 5;
     tv.tv_usec = 0;
     setsockopt(udp_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     
-    // Dołącz do grupy multicast (do odbierania ewentualnych odpowiedzi)
+    // Dołącz do grupy multicast
     memset(&multicast_addr, 0, sizeof(multicast_addr));
     multicast_addr.sin_family = AF_INET;
     multicast_addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -361,137 +361,55 @@ int Connect() {
         return -1;
     }
     
-    // 2. Utwórz socket TCP do nasłuchiwania
-    tcp_listen_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (tcp_listen_socket < 0) {
-        perror("socket TCP");
-        close(udp_socket);
-        return -1;
-    }
-    
-    // Ustaw opcję SO_REUSEADDR
-    int opt = 1;
-    if (setsockopt(tcp_listen_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-        perror("setsockopt SO_REUSEADDR");
-        close(udp_socket);
-        close(tcp_listen_socket);
-        return -1;
-    }
-    
-    // Bind na dowolnym porcie TCP
-    memset(&tcp_addr, 0, sizeof(tcp_addr));
-    tcp_addr.sin_family = AF_INET;
-    tcp_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    tcp_addr.sin_port = 0; // System wybierze wolny port
-    
-    if (bind(tcp_listen_socket, (struct sockaddr*)&tcp_addr, sizeof(tcp_addr)) < 0) {
-        perror("bind TCP");
-        close(udp_socket);
-        close(tcp_listen_socket);
-        return -1;
-    }
-    
-    // Pobierz numer portu, który system przydzielił
-    socklen_t tcp_addr_len = sizeof(tcp_addr);
-    if (getsockname(tcp_listen_socket, (struct sockaddr*)&tcp_addr, &tcp_addr_len) < 0) {
-        perror("getsockname");
-        close(udp_socket);
-        close(tcp_listen_socket);
-        return -1;
-    }
-    
-    // Uruchom nasłuchiwanie
-    if (listen(tcp_listen_socket, LISTEN_QUEUE_SIZE) < 0) {
-        perror("listen");
-        close(udp_socket);
-        close(tcp_listen_socket);
-        return -1;
-    }
-    
-    printf("Nasłuchiwanie TCP na porcie: %d\n", ntohs(tcp_addr.sin_port));
-    
-    // 3. Przygotuj pakiet do wysłania przez multicast
-    // Pakiet zawiera: ID klienta (1 bajt) + port TCP (2 bajty)
-    uint16_t tcp_port = htons(tcp_addr.sin_port);
-    buffer[0] = client_id;
-    memcpy(&buffer[1], &tcp_port, sizeof(tcp_port));
-    
-    // 4. Wyślij swoje ID i port TCP przez multicast
+    // 2. Wyślij swoje ID przez multicast
     struct sockaddr_in send_addr;
     memset(&send_addr, 0, sizeof(send_addr));
     send_addr.sin_family = AF_INET;
     send_addr.sin_addr.s_addr = inet_addr(MULTICAST_GROUP);
     send_addr.sin_port = htons(MULTICAST_PORT);
     
-    if (sendto(udp_socket, buffer, 3, 0, (struct sockaddr*)&send_addr, sizeof(send_addr)) < 0) {
-        perror("sendto multicast");
-        close(udp_socket);
-        close(tcp_listen_socket);
-        return -1;
-    }
+    sendto(udp_socket, &client_id, sizeof(client_id), 0,
+           (struct sockaddr*)&send_addr, sizeof(send_addr));
     
-    printf("Wysłano ID 0x%02X i port TCP %d przez multicast\n", 
-           client_id, ntohs(tcp_port));
+    printf("Wysłano ID 0x%02X przez multicast\n", client_id);
     
-    // 5. Oczekuj na połączenie TCP od serwera
-    printf("Oczekiwanie na połączenie TCP od serwera...\n");
+    // 3. Nasłuchuj odpowiedzi od serwera
+    printf("Oczekiwanie na odpowiedź serwera...\n");
     
-    // Teraz czekamy na połączenie od serwera
-    if (WaitForServerConnection() != 0) {
-        fprintf(stderr, "Serwer nie połączył się w wymaganym czasie\n");
-        close(udp_socket);
-        close(tcp_listen_socket);
-        return -1;
-    }
-    
-    // UDP już niepotrzebne
-    close(udp_socket);
-    udp_socket = -1;
-    
-    // Socket nasłuchujący też już niepotrzebny
-    close(tcp_listen_socket);
-    tcp_listen_socket = -1;
-    
-    return 0;
-}
-
-// Funkcja czekająca na połączenie od serwera z timeoutem
-int WaitForServerConnection() {
-    fd_set readfds;
-    struct timeval tv;
     struct sockaddr_in server_addr;
     socklen_t addr_len = sizeof(server_addr);
+    int n = recvfrom(udp_socket, buffer, BUFFER_SIZE, 0,
+                     (struct sockaddr*)&server_addr, &addr_len);
     
-    // Ustaw timeout na 10 sekund
-    tv.tv_sec = 10;
-    tv.tv_usec = 0;
-    
-    FD_ZERO(&readfds);
-    FD_SET(tcp_listen_socket, &readfds);
-    
-    printf("Czekam max 10 sekund na połączenie od serwera...\n");
-    
-    int activity = select(tcp_listen_socket + 1, &readfds, NULL, NULL, &tv);
-    
-    if (activity < 0) {
-        perror("select");
-        return -1;
-    } else if (activity == 0) {
-        printf("Timeout - serwer nie połączył się\n");
+    if (n > 0) {
+        printf("Otrzymano odpowiedź od serwera: %s:%d\n",
+               inet_ntoa(server_addr.sin_addr), ntohs(server_addr.sin_port));
+        
+        // 4. Utwórz połączenie TCP z serwerem
+        tcp_socket = socket(AF_INET, SOCK_STREAM, 0);
+        if (tcp_socket < 0) {
+            perror("socket TCP");
+            close(udp_socket);
+            return -1;
+        }
+        
+        // Połącz z serwerem (używamy innego portu dla TCP)
+        server_addr.sin_port = htons(TCP_PORT);
+        
+        if (connect(tcp_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+            perror("connect TCP");
+            close(tcp_socket);
+            close(udp_socket);
+            return -1;
+        }
+        
+        close(udp_socket); // UDP już niepotrzebne
+        return 0;
+    } else {
+        printf("Timeout - nie otrzymano odpowiedzi od serwera\n");
+        close(udp_socket);
         return -1;
     }
-    
-    // Akceptuj połączenie
-    tcp_conn_socket = accept(tcp_listen_socket, (struct sockaddr*)&server_addr, &addr_len);
-    if (tcp_conn_socket < 0) {
-        perror("accept");
-        return -1;
-    }
-    
-    printf("Serwer połączył się z: %s:%d\n",
-           inet_ntoa(server_addr.sin_addr), ntohs(server_addr.sin_port));
-    
-    return 0;
 }
 
 // Funkcja Disconnect - zamyka połączenia

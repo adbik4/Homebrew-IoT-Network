@@ -19,14 +19,14 @@ void error(char* msg) {
     if (RUN_AS_DAEMON) {
         syslog (LOG_ERR, "%s", msg);
     } else {
-        fprintf(stderr, "%s\n", msg);
+        fprintf(stderr, "\x1B[31m%s\x1B[0m\n", msg); // red
     }
 }
 
 void show_stats(int events, int conns) {
     char msg[MAXMSGSIZE];
 
-    sprintf(msg, "Events: %6d | Active connections: %6d", events, conns);
+    sprintf(msg, "Epoll events: %6d | Active connections: %6d", events, conns);
     notice(msg);
 }
 
