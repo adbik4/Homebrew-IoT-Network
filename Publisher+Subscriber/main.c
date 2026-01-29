@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
         if (DHT11_Init() != 0) {
             fprintf(stderr, "Błąd: Nie udało się zainicjalizować wiringPi lub czujnika DHT11\n");
             fprintf(stderr, "Upewnij się, że:\n");
-            fprintf(stderr, "1. Czujnik DHT11 jest podłączony do pinu GPIO4 (fizyczny pin 16)\n");
+            fprintf(stderr, "1. Czujnik DHT11 jest podłączony do pinu GPIO6 (fizyczny pin 22)\n");
             fprintf(stderr, "2. Zainstalowano wiringPi: sudo apt-get install wiringpi\n");
             fprintf(stderr, "3. Program jest uruchomiony z uprawnieniami sudo\n");
             return 1;
@@ -145,6 +145,7 @@ int main(int argc, char *argv[]) {
                     // W przypadku błędu, używamy temperatury 25.0°C i wilgotności 50%
                     temperature_c = 25.0f;
                     humidity_percent = 50.0f;
+                    last_read_time = current_time;
                 }
                 
                 // Przeliczanie jednostek
