@@ -1,7 +1,7 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-#define DATABASE_NAME   "database.txt"
+#define DATABASE_NAME   "database.csv"
 
 #define RUN_AS_DAEMON   0
 #define MAXEVENTS       1000

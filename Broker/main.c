@@ -137,7 +137,7 @@ int main() {
 
                 show_stats(stat_events, stat_active_conns);
                 sprintf(msg, "Connection from %s", inet_ntoa(cliaddr.sin_addr));
-                notice(msg);
+                info(msg);
                 continue;
             }
             /* ---------- UDP echo ---------- */
@@ -168,7 +168,7 @@ int main() {
                     // remove the client from the list
                     cli_idx = client_lookup(fd);
                     sprintf(msg, "%s disconnected", inet_ntoa(client_list[cli_idx].ip));
-                    notice(msg);
+                    info(msg);
                     client_remove(cli_idx);
                     
                     fd = -1; // invalidate
@@ -218,7 +218,7 @@ int main() {
                     // mock response for DEBUG only
                     MeasurementData response;
                     response.id = 69;
-                    response.timestamp = time(NULL);
+                    response.timestamp = htonl(time(NULL));
                     response.temperature = htons(420);
                     response.humidity = htons(6767);
 

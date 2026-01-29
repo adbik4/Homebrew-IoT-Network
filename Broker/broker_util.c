@@ -14,6 +14,14 @@ void notice(char* msg) {
     }
 }
 
+void info(char* msg) {
+    if (RUN_AS_DAEMON) {
+        syslog (LOG_INFO, "%s", msg);
+    } else {
+        fprintf(stdout, "\x1B[33m%s\x1B[0m\n", msg);
+    }
+}
+
 void error(char* msg) {
     if (RUN_AS_DAEMON) {
         syslog (LOG_ERR, "%s", msg);
