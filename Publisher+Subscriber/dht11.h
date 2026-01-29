@@ -2,7 +2,7 @@
 #define DHT11_H
 
 // Definicje dla DHT11
-#define DHT11_PIN 22  // GPIO6 (fizyczny pin 31 na Raspberry Pi)
+#define DHT11_PIN 4  // GPIO4 (fizyczny pin 7)
 #define DHT11_WAIT_TIME 2  // 2 sekundy między odczytami
 
 // Funkcje do obsługi czujnika DHT11
