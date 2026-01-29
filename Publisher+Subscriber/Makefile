@@ -1,16 +1,12 @@
 # Makefile dla klienta DHT11-MQTT z GPIO5
 CC = gcc
-CFLAGS = -I.. -Wall -O2 -DDEBUG_DHT11 -DGPIO_PIN=5
+CFLAGS = -I.. -Wall -O2 -DDEBUG_DHT11 -I.
 LDFLAGS = -lwiringPi -lpthread
 TARGET = dht11_client
 
-# Pliki źródłowe
+# Pliki źródłowe - ZAKTUALIZOWANE NAZWY PLIKÓW
 SRCS = main.c dht11.c simple_MQTT.c client_util.c \
-       driver_dht11.c driver_dht11_interface.c
-
-# Pliki nagłówkowe
-HEADERS = dht11.h constants.h data_structs.h simple_MQTT.h client_util.h \
-          driver_dht11.h driver_dht11_interface.h
+       driver_dht11.c driver_dht11_interface_template.c
 
 # Generuj nazwy plików obiektowych
 OBJS = $(SRCS:.c=.o)
@@ -24,10 +20,30 @@ $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LDFLAGS)
 	@echo "Kompilacja zakończona: $(TARGET)"
 
-# Kompilacja każdego pliku źródłowego
-%.o: %.c $(HEADERS)
+# Reguła kompilacji dla każdego pliku .c
+.c.o:
 	@echo "Kompilowanie $<..."
 	$(CC) $(CFLAGS) -c $< -o $@
+
+# Alternatywnie, możesz użyć dokładniejszych reguł dla każdego pliku:
+
+# main.o: main.c dht11.h constants.h data_structs.h simple_MQTT.h
+# 	$(CC) $(CFLAGS) -c main.c -o main.o
+
+# dht11.o: dht11.c dht11.h driver_dht11.h driver_dht11_interface.h
+# 	$(CC) $(CFLAGS) -c dht11.c -o dht11.o
+
+# driver_dht11.o: driver_dht11.c driver_dht11.h
+# 	$(CC) $(CFLAGS) -c driver_dht11.c -o driver_dht11.o
+
+# driver_dht11_interface_template.o: driver_dht11_interface_template.c driver_dht11_interface.h dht11.h
+# 	$(CC) $(CFLAGS) -c driver_dht11_interface_template.c -o driver_dht11_interface_template.o
+
+# simple_MQTT.o: simple_MQTT.c simple_MQTT.h constants.h data_structs.h client_util.h
+# 	$(CC) $(CFLAGS) -c simple_MQTT.c -o simple_MQTT.o
+
+# client_util.o: client_util.c client_util.h data_structs.h
+# 	$(CC) $(CFLAGS) -c client_util.c -o client_util.o
 
 # Czyszczenie
 clean:
@@ -55,7 +71,7 @@ test-compile:
 # Test czujnika
 test-sensor:
 	@echo "Kompilacja testu czujnika..."
-	$(CC) $(CFLAGS) -o test_dht11 test_dht11.c dht11.c driver_dht11.c driver_dht11_interface.c -lwiringPi
+	$(CC) $(CFLAGS) -o test_dht11 test_dht11.c dht11.c driver_dht11.c driver_dht11_interface_template.c -lwiringPi
 	@echo "Uruchamianie testu czujnika..."
 	sudo ./test_dht11
 
