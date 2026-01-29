@@ -1,7 +1,7 @@
 #include "dht11.h"
 #include <wiringPi.h>
 #include <stdio.h>
-#include <stdint.h>
+#include <sys/time.h>
 
 // Inicjalizacja wiringPi i czujnika DHT11
 int DHT11_Init() {
@@ -51,7 +51,7 @@ int DHT11_ReadSensor(float *temperature, float *humidity){
 		}
 		
 		gettimeofday(&return_of_sig, NULL);
-		buf[j] = ((1000000 * return_of_sig.tv_sec + return_of_sig.tv_usec) - time_in_micros) > 50;
+		dht11_dat[j] = ((1000000 * return_of_sig.tv_sec + return_of_sig.tv_usec) - time_in_micros) > 50;
 	}
 	
 	int byte1 = getByte(1, buf);
@@ -78,9 +78,9 @@ int DHT11_ReadSensor(float *temperature, float *humidity){
 	return -1;
 }
 
-uint8_t getByte(int b, int buf[]){
+int getByte(int b, int buf[]){
 	int i;
-	uint8_t result = ;
+	int result = 0;
 	b = (b - 1)*8 + 1;
 	for(i = b; i <= b+7; i++){
 		result = result << 1;
