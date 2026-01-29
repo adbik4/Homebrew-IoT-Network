@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -I.
+CFLAGS = -I. -I..
 ELF_NAME = broker-daemon
 
 SRCS = main.c setup.c database.c broker_util.c

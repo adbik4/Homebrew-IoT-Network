@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -I.
+CFLAGS = -I. -I..
 ELF_NAME = client
 
 SRCS = main.c dht11.c client_util.c simple_MQTT.c
