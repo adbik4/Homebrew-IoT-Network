@@ -21,7 +21,7 @@ extern bool is_running, is_publisher;
 int Connect() {
     struct sockaddr_in multicast_addr;
     struct ip_mreq mreq;
-    char buffer[MAXTXSIZE];
+    char buffer[BUFSIZE];
     struct timeval tv;
     
     // 1. Utwórz socket UDP do multicast
@@ -78,7 +78,7 @@ int Connect() {
     
     struct sockaddr_in server_addr;
     socklen_t addr_len = sizeof(server_addr);
-    int n = recvfrom(udp_socket, buffer, MAXTXSIZE, 0,
+    int n = recvfrom(udp_socket, buffer, BUFSIZE, 0,
                      (struct sockaddr*)&server_addr, &addr_len);
     
     if (n > 0) {
@@ -146,7 +146,7 @@ void Publish(uint16_t temp, uint16_t humidity) {
     data.humidity = htons(humidity);
     
     // Wysyłaj w odpowiedniej kolejności: ID, temp, humidity
-    uint8_t buffer[MAXRXSIZE];
+    uint8_t buffer[BUFSIZE];
     buffer[0] = data.id;
     memcpy(&buffer[1], &data.temperature, 2);
     memcpy(&buffer[3], &data.humidity, 2);
@@ -164,7 +164,7 @@ void Subscribe(uint8_t target_id, uint8_t action) {
     req.action = action; // 0=start, 1=stop
     
     // Wysyłaj w odpowiedniej kolejności
-    uint8_t buffer[MAXRXSIZE];
+    uint8_t buffer[BUFSIZE];
     buffer[0] = req.special_id;
     buffer[1] = req.target_id;
     buffer[2] = req.action;

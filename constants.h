@@ -6,8 +6,7 @@
 #define RUN_AS_DAEMON   0
 #define MAXEVENTS       1000
 #define MAXQUEUE        5
-#define MAXRXSIZE       5
-#define MAXTXSIZE       13
+#define BUFSIZE         5
 #define MAXMSGSIZE      128
 #define MAXIDCOUNT      255
 #define MAXCLIENTS      1024

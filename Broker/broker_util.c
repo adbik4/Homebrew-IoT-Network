@@ -57,7 +57,7 @@ void client_remove(int idx) {
 
 // sends a notification to a given subscriber
 void notify_subscriber(int fd, uint8_t target_id) {
-    uint8_t tx_buffer[MAXTXSIZE];
+    uint8_t tx_buffer[BUFSIZE];
 
     SensorData data = last_data[target_id];
 

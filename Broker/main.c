@@ -48,7 +48,7 @@ int main() {
     int discover_fd, listen_fd;
     struct epoll_event events[MAXEVENTS];
 
-    char rx_buffer[MAXRXSIZE];
+    char rx_buffer[BUFSIZE];
 
     SensorData data;
     SubscriptionRequest request;
@@ -158,8 +158,8 @@ int main() {
             
             /* ---------- TCP client ---------- */
             size_t received = 0;
-            while (received < MAXRXSIZE) {
-                ssize_t n = read(fd, rx_buffer + received, MAXRXSIZE - received);
+            while (received < BUFSIZE) {
+                ssize_t n = read(fd, rx_buffer + received, BUFSIZE - received);
                 if (n <= 0) {
                     // disconnect
                     close(fd);
