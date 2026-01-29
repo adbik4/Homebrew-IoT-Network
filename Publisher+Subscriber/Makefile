@@ -8,7 +8,7 @@ all: $(ELF_NAME)
 
 $(ELF_NAME): $(SRCS)
 	mkdir -p build
-	$(CC) $(CFLAGS) $(SRCS) -o build/$(ELF_NAME)
+	$(CC) $(CFLAGS) $(SRCS) -o build/$(ELF_NAME) -l wiringPi
 
 clean:
 	rm -f build/$(ELF_NAME)
