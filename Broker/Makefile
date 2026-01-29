@@ -3,16 +3,14 @@ CFLAGS = -I. -I..
 ELF_NAME = broker-daemon
 
 SRCS = main.c setup.c database.c ../utilities.c
-OBJS = $(SRCS:.c=.o)
 
 all: $(ELF_NAME)
 
-$(ELF_NAME): $(OBJS)
+$(ELF_NAME): $(SRCS)
 	mkdir -p build
-	$(CC) $(OBJS) -o build/$(ELF_NAME)
-
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(SRCS) -o build/$(ELF_NAME)
 
 clean:
-	rm -f $(OBJS) build/$(ELF_NAME)
+	rm -f build/$(ELF_NAME)
+
+.PHONY: all clean
