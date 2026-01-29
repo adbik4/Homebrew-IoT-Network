@@ -1,12 +1,17 @@
 #include "simple_MQTT.h"
 #include "data_structs.h"
 #include "constants.h"
+#include "utilities.h"
+
 #include <stdbool.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <stdio.h>
+#include <memory.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 extern int udp_socket, tcp_conn_socket, tcp_listen_socket;
 extern uint8_t client_id, target_id, subscription_action;
