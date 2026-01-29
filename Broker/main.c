@@ -157,7 +157,7 @@ int main() {
             /* ---------- TCP client ---------- */
             size_t received = 0;
             while (received < MAXRXSIZE) {
-                ssize_t n = read(fd, rx_buffer + received, 5 - received);
+                ssize_t n = read(fd, rx_buffer + received, MAXRXSIZE - received);
                 if (n <= 0) {
                     // disconnect
                     close(fd);
@@ -186,7 +186,9 @@ int main() {
 
                 if (data.id == 0xFF) {  // SUBSCRIBER
                     // reinterpret as SubscriptionRequest
-                    memcpy(&request, rx_buffer, sizeof(request));
+                    request.special_id = rx_buffer[0]; 
+                    request.target_id = rx_buffer[1];
+                    request.action = rx_buffer[2];
 
                     // fill in the subscriber data
                     cli_idx = client_lookup(fd);

@@ -146,7 +146,7 @@ void Publish(uint16_t temp, uint16_t humidity) {
     data.humidity = htons(humidity);  // ZAMIENIONE: pressure -> humidity
     
     // Wysyłaj w odpowiedniej kolejności: ID, temp, humidity
-    uint8_t buffer[5];
+    uint8_t buffer[MAXRXSIZE];
     buffer[0] = data.id;
     memcpy(&buffer[1], &data.temperature, 2);
     memcpy(&buffer[3], &data.humidity, 2);  // ZAMIENIONE: pressure -> humidity
@@ -164,7 +164,7 @@ void Subscribe(uint8_t target_id, uint8_t action) {
     req.action = action; // 0=start, 1=stop
     
     // Wysyłaj w odpowiedniej kolejności
-    uint8_t buffer[3];
+    uint8_t buffer[MAXRXSIZE];
     buffer[0] = req.special_id;
     buffer[1] = req.target_id;
     buffer[2] = req.action;
