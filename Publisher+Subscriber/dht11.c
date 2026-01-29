@@ -19,71 +19,72 @@ int DHT11_Init() {
 }
 
 // Odczyt danych z czujnika DHT11
-int DHT11_ReadSensor(float *temperature, float *humidity) {
-    uint8_t laststate = HIGH;
-    uint8_t counter = 0;
-    uint8_t j = 0, i;
-    int dht11_dat[5] = {0, 0, 0, 0, 0};
-    
-    // Przygotowanie pinu
-    pinMode(DHT11_PIN, OUTPUT);
-    digitalWrite(DHT11_PIN, LOW);
-    delay(18);  // 18ms zgodnie z dokumentacją DHT11
-    
-    // Przełączenie pinu na wejście z podciągnięciem do wysokiego stanu
-    pinMode(DHT11_PIN, INPUT);
-    
-    // Oczekiwanie na odpowiedź czujnika
-    for (i = 0; i < DHT11_MAX_TIMINGS; i++) {
-        counter = 0;
-        while (digitalRead(DHT11_PIN) == laststate) {
-            counter++;
-            delayMicroseconds(1);
-            if (counter == 255) {
-                break;
-            }
-        }
-        laststate = digitalRead(DHT11_PIN);
-        
-        if (counter == 255) {
-            break;
-        }
-        
-        // Ignorujemy pierwsze 3 przejścia
-        if ((i >= 4) && (i % 2 == 0)) {
-            // Każdy bit jest kodowany długością stanu wysokiego
-            dht11_dat[j / 8] <<= 1;
-            if (counter > 16) {
-                dht11_dat[j / 8] |= 1;
-            }
-            j++;
-        }
-    }
-    
-    // Sprawdzenie poprawności odczytu (suma kontrolna)
-    if ((j >= 40) && 
-        (dht11_dat[4] == ((dht11_dat[0] + dht11_dat[1] + dht11_dat[2] + dht11_dat[3]) & 0xFF))) {
-        // Konwersja danych
-        *humidity = (float)dht11_dat[0];  // Wilgotność w %
-        *temperature = (float)dht11_dat[2];  // Temperatura w °C
-        
-        // DHT11 może zwracać ujemną temperaturę (w formacie uzupełnienia do dwóch)
-        if (dht11_dat[2] & 0x80) {
-            *temperature = -(float)(dht11_dat[2] & 0x7F);
-        }
-        
-        // Ograniczenie zakresu wilgotności do 0-100%
-        if (*humidity < 0) *humidity = 0;
-        if (*humidity > 100) *humidity = 100;
-        
-        return 0;  // Sukces
-    }
-    
-    return -1;  // Błąd odczytu
+int DHT11_ReadSensor(float *temperature, float *humidity){
+	uint64_t counter = 0;
+	uint8_t j, i;
+	int dht11_dat[41];
+	unsigned long time_in_micros;
+	struct timeval return_of_sig;
+	pinMode(DHT11_PIN, OUTPUT);
+	digitalWrite(DHT11_PIN, LOW);
+	delay(2);
+	pinMode(DHT11_PIN, INPUT);
+	for(i = 1; i < 2000; i++){
+		if(digitalRead(DHT11_PIN) == 0){
+			break;
+		}
+	}
+	for(j=0; j < 41; j++){
+		for(i = 1; i < 2000; i++){
+			if(digitalRead(DHT11_PIN) == 1){
+				break;
+			}
+		}
+		
+		gettimeofday(&return_of_sig, NULL);
+		time_in_micros = 1000000 * return_of_sig.tv_sec + return_of_sig.tv_usec;
+		
+		for(i = 1; i < 2000; i++){
+			if(digitalRead(DHT11_PIN) == 0){
+				break;
+			}
+		}
+		
+		gettimeofday(&return_of_sig, NULL);
+		buf[j] = ((1000000 * return_of_sig.tv_sec + return_of_sig.tv_usec) - time_in_micros) > 50;
+	}
+	
+	int byte1 = getByte(1, buf);
+	int byte2 = getByte(2, buf);
+	int byte3 = getByte(3, buf);
+	int byte4 = getByte(4, buf);
+	int byte5 = getByte(5, buf);
+	
+	pinMode(DHT11_PIN, OUTPUT);
+	digitalWrite(DHT11_PIN, HIGH);
+	
+	if(byte5 == ((byte1+byte2+byte3+byte4)&0xFF)){
+		float humidity_temp = (float)(byte1 << 8 | byte2)/10.0;
+		int neg = byte3 & 0x80;
+		byte3 = byte3 & 0x7F;
+		float temperature_temp = (float)(byte3 << 8 | byte4) / 10.0;
+		if(neg > 0){
+			temperature_temp = -temperature_temp;
+		}
+		*humidity = humidity_temp;
+		*temperature = temperature_temp;
+		return 0;
+	}
+	return -1;
 }
 
-// Zamknięcie czujnika (zwolnienie zasobów)
-void DHT11_Close() {
-    // Dla DHT11 nie ma specjalnych operacji do wykonania
-    // wiringPi nie wymaga specjalnego zamykania
+uint8_t getByte(int b, int buf[]){
+	int i;
+	uint8_t result = ;
+	b = (b - 1)*8 + 1;
+	for(i = b; i <= b+7; i++){
+		result = result << 1;
+		result = result | buf[i];
+	}
+	return result;
 }
