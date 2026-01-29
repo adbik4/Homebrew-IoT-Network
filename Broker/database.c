@@ -27,13 +27,10 @@ int open_db() {
 void save2db(SensorData data) {
     if (db == NULL) return;
     
-    time(&currentTime); // Get the current time
-    strftime(readableTime, sizeof(readableTime), "%d-%m-%Y %H:%M:%S", localtime(&currentTime)); // format
-
     // parse and write the data to the database
-    fprintf(db, "%hhu;%s;%hu;%hu\n",
+    fprintf(db, "%hhu;%lu;%hu;%hu\n",
         data.id,
-        readableTime,
+        time(NULL), // current time (seconds since epoch)
         data.temperature,
         data.pressure
     );

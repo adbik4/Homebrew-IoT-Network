@@ -23,13 +23,14 @@ typedef struct {
     uint8_t special_id;      // 0xFF dla subskrypcji
     uint8_t target_id;       // ID do nasłuchiwania
     uint8_t action;          // 0=start, 1=stop
+    uint16_t reserved;
 } SubscriptionRequest;
 
 typedef struct {
     uint8_t id;
+    time_t timestamp;
     uint16_t temperature;
     uint16_t pressure;
-    time_t timestamp;
 } MeasurementData;
 
 #endif

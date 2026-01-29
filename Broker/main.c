@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <signal.h>
+#include <time.h>
 
 // globals
 static int  epoll_fd;
@@ -45,8 +46,9 @@ int main() {
     int discover_fd, listen_fd, cli_idx;
     struct epoll_event event;
     struct epoll_event events[MAXEVENTS];
-    char rx_buffer[MAXBUFSIZE];
-    char tx_buffer[MAXBUFSIZE];
+
+    char rx_buffer[MAXRXSIZE];
+    char tx_buffer[MAXTXSIZE];
 
     SensorData data;
     SubscriptionRequest request;
@@ -154,7 +156,7 @@ int main() {
             
             /* ---------- TCP client ---------- */
             size_t received = 0;
-            while (received < 5) {
+            while (received < MAXRXSIZE) {
                 ssize_t n = read(fd, rx_buffer + received, 5 - received);
                 if (n <= 0) {
                     // disconnect
@@ -168,40 +170,63 @@ int main() {
                     sprintf(msg, "%s disconnected", inet_ntoa(client_list[cli_idx].ip));
                     notice(msg);
                     client_remove(cli_idx);
+                    
+                    fd = -1; // invalidate
                     break;
                 }
                 received += n;
             }
 
-            // interpret the rx_buffer as SensorData
-            data.id = rx_buffer[0];
-            memcpy(&data.temperature, &rx_buffer[1], 2);
-            memcpy(&data.pressure, &rx_buffer[3], 2);
+            // if fd is valid
+            if (fd >= 0) {  
+                // interpret the rx_buffer as SensorData
+                data.id = rx_buffer[0]; 
+                memcpy(&data.temperature, &rx_buffer[1], 2);
+                memcpy(&data.pressure, &rx_buffer[3], 2);
 
-            if (data.id == 0xFF) {  // SUBSCRIBER
-                // reinterpret as SubscriptionRequest
-                memcpy(&request, rx_buffer, sizeof(request));
+                if (data.id == 0xFF) {  // SUBSCRIBER
+                    // reinterpret as SubscriptionRequest
+                    memcpy(&request, rx_buffer, sizeof(request));
 
-                // fill in the subscriber data
-                cli_idx = client_lookup(fd);
-                if (cli_idx < 0) {
-                    error("Client index not found");
+                    // fill in the subscriber data
+                    cli_idx = client_lookup(fd);
+                    if (cli_idx < 0) {
+                        error("Client index not found");
+                    }
+                    client_list[cli_idx].is_subscriber = 1;
+                    client_list[cli_idx].sub = request.target_id;
+                } 
+                else {  // PUBLISHER
+                    data.temperature = ntohs(data.temperature);
+                    data.pressure = ntohs(data.pressure);
+                    save2db(data);  // save the data
+                    sprintf(msg, 
+                        "Recieved: ID: 0x%02X | temp: %u.%02u°C | pressure: %u.%uhPa",
+                        data.id,
+                        data.temperature / 100, data.temperature % 100,
+                        data.pressure / 10, data.pressure % 10
+                    );
+                    notice(msg);
                 }
-                client_list[cli_idx].is_subscriber = 1;
-                client_list[cli_idx].sub = request.target_id;
-            } 
-            else {  // PUBLISHER
-                data.temperature = ntohs(data.temperature);
-                data.pressure = ntohs(data.pressure);
-                save2db(data);
-                sprintf(msg, 
-                    "Recieved: ID: 0x%02X | temp: %u.%02u°C | pressure: %u.%uhPa",
-                    data.id,
-                    data.temperature / 100, data.temperature % 100,
-                    data.pressure / 10, data.pressure % 10
-                );
-                notice(msg);
-                // sth else
+
+                /* ---------- Notify Subscribers ---------- */
+                cli_idx = client_lookup(fd);
+                if (client_list[cli_idx].is_subscriber) {
+
+                    // mock response for DEBUG only
+                    MeasurementData response;
+                    response.id = 69;
+                    response.timestamp = time(NULL);
+                    response.temperature = htons(420);
+                    response.pressure = htons(6767);
+
+                    tx_buffer[0] = response.id;
+                    memcpy(&tx_buffer[1], &response.timestamp, 8);
+                    memcpy(&tx_buffer[9], &response.temperature, 2);
+                    memcpy(&tx_buffer[11], &response.pressure, 2);
+
+                    write(fd, tx_buffer, sizeof(tx_buffer));
+                }
             }
         }
     };

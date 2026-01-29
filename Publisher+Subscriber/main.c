@@ -34,13 +34,14 @@ typedef struct {
     uint8_t special_id;      // 0xFF dla subskrypcji
     uint8_t target_id;       // ID do nasłuchiwania
     uint8_t action;          // 0=start, 1=stop
+    uint16_t reserved;
 } SubscriptionRequest;
 
 typedef struct {
     uint8_t id;
+    time_t timestamp;
     uint16_t temperature;
     uint16_t pressure;
-    time_t timestamp;
 } MeasurementData;
 #pragma pack(pop)
 
@@ -306,8 +307,8 @@ void Publish(uint16_t temp, uint16_t pressure) {
     // Wysyłaj w odpowiedniej kolejności: ID, temp, pressure
     uint8_t buffer[5];
     buffer[0] = data.id;
-    memcpy(&buffer[1], &(data.temperature), sizeof(data.temperature));
-    memcpy(&buffer[3], &(data.pressure), sizeof(data.pressure));
+    memcpy(&buffer[1], &data.temperature, 2);
+    memcpy(&buffer[3], &data.pressure, 2);
     
     send(tcp_conn_socket, buffer, sizeof(buffer), 0);
 }
@@ -322,10 +323,11 @@ void Subscribe(uint8_t target_id, uint8_t action) {
     req.action = action; // 0=start, 1=stop
     
     // Wysyłaj w odpowiedniej kolejności
-    uint8_t buffer[3];
+    uint8_t buffer[5];
     buffer[0] = req.special_id;
     buffer[1] = req.target_id;
     buffer[2] = req.action;
+    memcpy(&buffer[3], &req.reserved, 2);
     
     int bytes_sent = send(tcp_conn_socket, buffer, sizeof(buffer), 0);
     

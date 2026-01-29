@@ -3,10 +3,11 @@
 
 #define DATABASE_NAME   "database.txt"
 
-#define RUN_AS_DAEMON   1
+#define RUN_AS_DAEMON   0
 #define MAXEVENTS       1000
 #define MAXQUEUE        16
-#define MAXBUFSIZE      1024
+#define MAXRXSIZE       5
+#define MAXTXSIZE      1024
 #define MAXMSGSIZE      128
 #define MAXCLIENTS      256
 
