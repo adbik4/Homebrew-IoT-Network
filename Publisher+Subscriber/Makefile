@@ -1,16 +1,26 @@
 CC = gcc
-CFLAGS = -I. -I..
-ELF_NAME = client
+CFLAGS = -Wall -g
+LDFLAGS = -lwiringPi
 
-SRCS = main.c dht11.c client_util.c simple_MQTT.c
+# Pliki źródłowe
+SRCS = main.c dht11.c simple_MQTT.c client_util.c \
+       driver_dht11.c driver_dht11_interface_template.c
+OBJS = $(SRCS:.c=.o)
 
-all: $(ELF_NAME)
+TARGET = client
 
-$(ELF_NAME): $(SRCS)
-	mkdir -p build
-	$(CC) $(CFLAGS) $(SRCS) -o build/$(ELF_NAME) -l wiringPi
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LDFLAGS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f build/$(ELF_NAME)
+	rm -f $(OBJS) $(TARGET)
 
-.PHONY: all clean
+# Kompilacja z wartościami testowymi (bez DHT11)
+test:
+	$(CC) $(CFLAGS) -DTEST_VALUES -c dht11.c -o dht11.o
+	$(CC) $(CFLAGS) -o $(TARGET) main.c dht11.o simple_MQTT.c client_util.c $(LDFLAGS)
