@@ -102,7 +102,6 @@ int main(int argc, char *argv[]) {
     // Połączenie z serwerem
     if (Connect() != 0) {
         fprintf(stderr, "Nie udało się połączyć z serwerem\n");
-    }
         return 1;
     }
     
