@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-extern int udp_socket, tcp_conn_socket, tcp_listen_socket;
+extern int udp_socket, tcp_conn_socket;
 extern uint8_t client_id, target_id, subscription_action;
 extern bool is_running, is_publisher;
 
@@ -123,11 +123,6 @@ void Disconnect() {
         }
         close(tcp_conn_socket);
         tcp_conn_socket = -1;
-    }
-    
-    if (tcp_listen_socket >= 0) {
-        close(tcp_listen_socket);
-        tcp_listen_socket = -1;
     }
     
     if (udp_socket >= 0) {
