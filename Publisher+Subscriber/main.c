@@ -206,7 +206,7 @@ int main(int argc, char *argv[]) {
                 
                 // Jeśli mamy 5 kolejnych błędów, wyświetl ostrzeżenie
                 if (failed_reads >= 5 && failed_reads % 5 == 0) {
-                    fprintf(stderr, "\n⚠️  OSTRZEŻENIE: %d kolejnych błędów odczytu DHT11!\n", failed_reads);
+                    fprintf(stderr, "\nOSTRZEŻENIE: %d kolejnych błędów odczytu DHT11!\n", failed_reads);
                     fprintf(stderr, "   Sprawdź podłączenie czujnika i zasilanie.\n\n");
                 }
                 
