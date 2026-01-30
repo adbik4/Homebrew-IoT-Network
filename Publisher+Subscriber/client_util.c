@@ -2,7 +2,7 @@
 #include "data_structs.h"
 #include <stdio.h>
 
-// Funkcja PrintMeasurement - wyświetla odebrane dane pomiarowe
+// Funkcja PrintMeasurement, wyświetlanie danych na ekranie dla subscribera
 void PrintMeasurement(const SensorData *data) {
     if (
         data->id == 0 &&
