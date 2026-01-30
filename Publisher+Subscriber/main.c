@@ -121,8 +121,9 @@ int main(int argc, char *argv[]) {
     
     // Wysłanie żądania subskrypcji (jeśli dotyczy)
     if (!is_publisher) {
-        Subscribe(target_id, subscription_action);
-        
+        if (subscription_action == 0){
+            Subscribe(target_id, subscription_action);
+        }
         // Jeśli rezygnujemy z nasłuchu, to od razu kończymy
         if (subscription_action == 1) {
             printf("Żądanie rezygnacji z nasłuchu wysłane. Zamykanie...\n");
