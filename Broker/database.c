@@ -5,7 +5,7 @@
 
 extern FILE* db;
 time_t currentTime;
-char readableTime[32];
+
 
 int open_db() {
     // open for reading and appending at the end of file
@@ -26,11 +26,17 @@ int open_db() {
 
 void save2db(SensorData data) {
     if (db == NULL) return;
+
+    time_t currentTime; // current time (seconds since epoch)
+    char readableTime[32];
+
+    time(&currentTime); 
+    strftime(readableTime, sizeof(readableTime), "%d-%m-%Y %H:%M:%S", localtime(&currentTime));
     
     // parse and write the data to the database
-    fprintf(db, "%hhu;%lu;%hu;%hu\n",
+    fprintf(db, "%hhu;%s;%hu;%hu\n",
         data.id,
-        time(NULL), // current time (seconds since epoch)
+        readableTime,
         data.temperature,
         data.humidity
     );

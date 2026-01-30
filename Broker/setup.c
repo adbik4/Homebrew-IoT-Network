@@ -92,7 +92,7 @@ int create_udp_discoverer(const int port) {
 
     // join the multicast group
     struct ip_mreq mreq;
-    mreq.imr_multiaddr.s_addr = inet_addr("239.0.0.1");
+    mreq.imr_multiaddr.s_addr = inet_addr(MULTICAST_GROUP);
     mreq.imr_interface.s_addr = htonl(INADDR_ANY);
 
     if ((setsockopt(discover_fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq))) < 0) {
