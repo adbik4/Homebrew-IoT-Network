@@ -17,7 +17,6 @@
 #include "dht11.h"
 
 // Zmienne globalne
-int tcp_listen_socket = -1;
 int tcp_conn_socket = -1;
 int udp_socket = -1;
 bool is_running = true;
