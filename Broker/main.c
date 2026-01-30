@@ -1,18 +1,3 @@
-// PSEUDOKOD SERWERA:
-// * przejście w tryb daemon i inicjujemy logi systemowe
-// * inicjujemy gniazda
-// * ustawiamy działanie epoll()
-// * w pętli epoll:
-//      - sprawdzamy czy są nowe połączenia
-//          jeśli tak: otwieramy nowe połączenie
-//      - wyświelaj staty (l. eventów, połączeń)
-//      - rozmawiamy z istniejącymi połączeniami
-//      - odbieramy pakiet
-//          a) to publisher: wyciągamy z niego dane, wpisujemy do pliku, podpisane tematem
-//          b) to subscriber: sprawdzamy jakiego tematu zażądał, zapisujemy do listy subscriberów
-//          c) to multicast UDP: odpowiadamy na żądanie discovery
-//      - czy minał cooldown (żeby nie spamować): 
-//          jeśli tak: przeglądamy listę subscriberów, wysyłamy do każdego z nich dane które ich dotyczą (100 ostatnich wpisów)
 #define _GNU_SOURCE
 
 #include "setup.h"
