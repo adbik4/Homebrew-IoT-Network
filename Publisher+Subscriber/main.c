@@ -245,7 +245,7 @@ int main(int argc, char *argv[]) {
             static time_t last_status_time = 0;
             time_t now = time(NULL);
             if (now - last_status_time >= 10) {
-                printf("[%s] Nasłuchiwanie aktywnę... (odebrano: %d)\n", 
+                printf("[%s] Nasłuchiwanie aktywne... (odebrano: %d)\n", 
                        ctime(&now), received_count);
                 last_status_time = now;
             }

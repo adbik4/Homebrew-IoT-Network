@@ -2,3 +2,4 @@
 */build
 *.txt
 *.csv
+*/.o

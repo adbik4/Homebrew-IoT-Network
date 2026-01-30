@@ -2,7 +2,7 @@
 
 CC      := gcc
 CFLAGS  := -I.. -Wall -O2 -DDEBUG_DHT11 -I.
-LDFLAGS := -lwiringPi -lpthread
+LDFLAGS := -lpthread
 TARGET  := dht11_client
 
 # Pliki źródłowe
@@ -10,9 +10,7 @@ SRCS := \
 	main.c \
 	dht11.c \
 	simple_MQTT.c \
-	client_util.c \
-	driver_dht11.c \
-	driver_dht11_interface_template.c
+	client_util.c
 
 OBJS := $(SRCS:.c=.o)
 
@@ -40,7 +38,6 @@ clean:
 install-deps:
 	@echo "Instalowanie zależności..."
 	sudo apt-get update
-	sudo apt-get install wiringpi
 	@echo "Zależności zainstalowane pomyślnie"
 
 # Test kompilacji
