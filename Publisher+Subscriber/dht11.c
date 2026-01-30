@@ -24,7 +24,7 @@ int DHT11_Init() {
 int DHT11_ReadSensor(float *temperature, float *humidity) {
     FILE *fp;
     char buffer[128];
-    char cmd[] = "python3 dht11_python.py 2>/dev/null";
+    char cmd[] = "python3 -E dht11_python.py 2>/dev/null";
     
     // Wywołaj skrypt Pythona
     fp = popen(cmd, "r");
@@ -55,8 +55,8 @@ int DHT11_ReadSensor(float *temperature, float *humidity) {
     static int counter = 0;
     counter++;
     
-    *temperature = 22.0f + (counter % 10) * 0.3f;  // 22.0-24.7°C
-    *humidity = 50.0f + (counter % 8) * 1.5f;      // 50.0-61.5%
+    *temperature = 300.0f + (counter % 10) * 0.3f;  // 22.0-24.7°C
+    *humidity = 150.0f + (counter % 8) * 1.5f;      // 50.0-61.5%
     
     printf("[FALLBACK] Wartości testowe: %.1f°C, %.1f%%\n", *temperature, *humidity);
     

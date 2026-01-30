@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
 import sys
 import time
+import digitalio
 import board
 import adafruit_dht
 
@@ -19,4 +19,4 @@ try:
 
 except Exception as e:
     sys.stderr.write(f"Błąd: {e}\n")
-    print("23.5;55.0")
+    print("310.5;155.0")
