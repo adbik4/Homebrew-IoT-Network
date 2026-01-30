@@ -3,7 +3,7 @@
 
 #define DATABASE_NAME   "database.csv"
 
-#define RUN_AS_DAEMON   0
+#define RUN_AS_DAEMON   1
 #define MAXEVENTS       1000
 #define MAXQUEUE        5
 #define BUFSIZE         5

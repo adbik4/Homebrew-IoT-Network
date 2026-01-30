@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "3. Program jest uruchomiony z uprawnieniami sudo\n");
             return 1;
         }
-        printf("Czujnik DHT11 zainicjalizowany pomyślnie\n")
+        printf("Czujnik DHT11 zainicjalizowany pomyślnie\n");
         printf("Wykonam 2 testowe odczyty przed rozpoczęciem publikacji...\n");
         
         // Odczyt testowy, ostateczne sprawdenie czy cokolwiek czyta i działa
