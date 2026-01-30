@@ -8,7 +8,7 @@
 int DHT11_Init() {
     printf("Inicjalizacja DHT11 - używam Pythona do odczytu\n");
     
-    // Sprawdź czy Python jest dostępny
+    // Sprawdzanie dostępności pythona w systemie
     FILE *fp = popen("python3 --version", "r");
     if (fp) {
         char buffer[100];
@@ -26,19 +26,19 @@ int DHT11_ReadSensor(float *temperature, float *humidity) {
     char buffer[128];
     char cmd[] = "python3 -E dht11_python.py 2>/dev/null";
     
-    // Wywołaj skrypt Pythona
+    // Wywołanie skryptu w Pythonie do wykonania pomiaru na DHT11
     fp = popen(cmd, "r");
     if (fp == NULL) {
         fprintf(stderr, "Błąd uruchamiania Pythona\n");
         return -1;
     }
     
-    // Odczytaj wynik (format: "temperatura;wilgotność")
+    // Odczytanie wyniku (format: "temperatura;wilgotność")
     if (fgets(buffer, sizeof(buffer), fp) != NULL) {
-        // Usuń znak nowej linii
+        // Usuwanie znaku nowej linii z otrzymanego tekstu
         buffer[strcspn(buffer, "\n")] = 0;
         
-        // Parsuj wartości
+        // Zapis otrzymanych wartości do naszych zmiennych
         if (sscanf(buffer, "%f;%f", temperature, humidity) == 2) {
             pclose(fp);
             return 0;
@@ -51,12 +51,12 @@ int DHT11_ReadSensor(float *temperature, float *humidity) {
     
     pclose(fp);
     
-    // Jeśli Python nie działa, użyj wartości testowych
+    // W przypadku całkowitej awarii skryptu w Pythonie, generowanie danych bez sensu jako sygnał alarmowy
     static int counter = 0;
     counter++;
     
-    *temperature = 300.0f + (counter % 10) * 0.3f;  // 22.0-24.7°C
-    *humidity = 150.0f + (counter % 8) * 1.5f;      // 50.0-61.5%
+    *temperature = 300.0f + (counter % 10) * 0.3f;
+    *humidity = 150.0f + (counter % 8) * 1.5f;
     
     printf("[FALLBACK] Wartości testowe: %.1f°C, %.1f%%\n", *temperature, *humidity);
     
