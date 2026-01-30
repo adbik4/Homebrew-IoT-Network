@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
 import sys
 import time
+import board
+import adafruit_dht
 
 try:
-    import Adafruit_DHT
+# SPDX-FileCopyrightText: 2021 ladyada for Adafruit Industries
+# SPDX-License-Identifier: MIT
 
-    SENSOR = Adafruit_DHT.DHT11
-    PIN = 5 # GPIO, nie fizyczny
-    def read_dht11():
-        humidity, temperature = Adafruit_DHT.read_retry(SENSOR, PIN)
-        if humidity is None or temperature is None:
-            raise RuntimeError("Brak odczytu z DHT11")
-        return float(temperature), float(humidity)
+# Initial the dht device, with data pin connected to:
+    dhtDevice = adafruit_dht.DHT11(board.D5)
 
-    temp, humidity = read_dht11()
+# you can pass DHT22 use_pulseio=False if you wouldn't like to use pulseio.
+# This may be necessary on a Linux single board computer like the Raspberry Pi,
+# but it will not work in CircuitPython.
+# dhtDevice = adafruit_dht.DHT22(board.D18, use_pulseio=False)
+        # Print the values to the serial port
+    temp = dhtDevice.temperature
+    humidity = dhtDevice.humidity
+
+
+    time.sleep(2.0)
+
 
     # Wypisz w formacie: temperatura;wilgotność
     print(f"{temp:.1f};{humidity:.1f}")
