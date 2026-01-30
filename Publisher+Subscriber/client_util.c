@@ -1,6 +1,5 @@
 #include "client_util.h"
 #include "data_structs.h"
-#include <time.h>
 #include <stdio.h>
 
 // Funkcja PrintMeasurement - wyświetla odebrane dane pomiarowe

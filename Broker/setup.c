@@ -109,7 +109,6 @@ int create_tcp_listener(const int port) {
 	struct sockaddr_in addr;
     char msg[MAXMSGSIZE];
     int reuse;
-	int errno;
 
     if ((listen_fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) < 0) {
         snprintf(msg, MAXMSGSIZE, "TCP listen socket error : %s\n", strerror(errno));

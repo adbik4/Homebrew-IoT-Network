@@ -16,7 +16,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <signal.h>
-#include <time.h>
 
 // globals
 static int  epoll_fd;

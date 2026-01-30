@@ -4,7 +4,6 @@
 #include <time.h>
 
 extern FILE* db;
-time_t currentTime;
 
 
 int open_db() {
