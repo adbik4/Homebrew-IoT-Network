@@ -2,4 +2,5 @@
 */build
 *.txt
 *.csv
-*/.o
+*.o
+raspi-blinka.py
