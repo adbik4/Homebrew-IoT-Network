@@ -17,30 +17,28 @@ extern int udp_socket, tcp_conn_socket;
 extern uint8_t client_id, target_id, subscription_action;
 extern bool is_running, is_publisher;
 
-// Funkcja Connect - odnajduje serwer przez UDP multicast i nawiązuje połączenie TCP
+// Funkcja Connect dla klienta, wyszukuje serwer przez UDP podając swoje ID, oraz próbuje dokonać połączenia po TCP po znalezieniu
 int Connect() {
     struct sockaddr_in multicast_addr;
     struct ip_mreq mreq;
     char buffer[BUFSIZE];
     struct timeval tv;
     
-    // 1. Utwórz socket UDP do multicast
+    // Tworzenie gniazda UDP do wysyłania wiadomości na adres multicast i odbioru zwrotki z serwera
     udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
     if (udp_socket < 0) {
         perror("socket UDP");
         return -1;
     }
     
-    // Ustaw timeout na odbiór
+    // Ustawianie wartości timeout dla gniazda na 5 sekund i włączenie ignorowania własnych wiadomości na multicaście
     tv.tv_sec = 5;
     tv.tv_usec = 0;
     setsockopt(udp_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-
-    // Ignoruj własne wiadomości
     int loop = 0;
     setsockopt(udp_socket, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
     
-    // Dołącz do grupy multicast
+    // Dołączenie do grupy multicast zdefiniowanej w pliku nagłówkowym
     memset(&multicast_addr, 0, sizeof(multicast_addr));
     multicast_addr.sin_family = AF_INET;
     multicast_addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -61,7 +59,7 @@ int Connect() {
         return -1;
     }
     
-    // 2. Wyślij swoje ID przez multicast
+    // Wysłanie wiadomości na multicast w celu odnalezienia serwera
     struct sockaddr_in send_addr;
     memset(&send_addr, 0, sizeof(send_addr));
     send_addr.sin_family = AF_INET;
@@ -73,7 +71,7 @@ int Connect() {
     
     printf("Wysłano ID 0x%02X przez multicast\n", client_id);
     
-    // 3. Nasłuchuj odpowiedzi od serwera
+    // Nasłuchiwanie odpowiedzi ze strony zerwera i odczytanie jego danych
     printf("Oczekiwanie na odpowiedź serwera...\n");
     
     struct sockaddr_in server_addr;
@@ -85,7 +83,7 @@ int Connect() {
         printf("Otrzymano odpowiedź od serwera: %s:%d\n",
                inet_ntoa(server_addr.sin_addr), ntohs(server_addr.sin_port));
         
-        // 4. Utwórz połączenie TCP z serwerem
+        // Utworzenie gniazda TCP do komunikacja z serwerem oraz łączenie się na podstawie otrzymanych danych
         tcp_conn_socket = socket(AF_INET, SOCK_STREAM, 0);
         if (tcp_conn_socket < 0) {
             perror("socket TCP");
@@ -93,7 +91,6 @@ int Connect() {
             return -1;
         }
         
-        // Połącz z serwerem (używamy innego portu dla TCP)
         server_addr.sin_port = htons(LISTEN_PORT);
         
         if (connect(tcp_conn_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
@@ -102,8 +99,9 @@ int Connect() {
             close(udp_socket);
             return -1;
         }
-        
-        close(udp_socket); // UDP już niepotrzebne
+
+        // Zamknięcie gniazda UDP po dokonaniu połączenia
+        close(udp_socket);
         return 0;
     } else {
         printf("Timeout - nie otrzymano odpowiedzi od serwera\n");
@@ -112,14 +110,12 @@ int Connect() {
     }
 }
 
-// Funkcja Disconnect - zamyka połączenia
+// Funkcja Disconnect, sprawdzenie istnienia gniazd i zamknięcie wszystkich
 void Disconnect() {
     if (tcp_conn_socket >= 0) {
-        // Jeśli jesteśmy subskrybentem i nasłuchujemy (nie rezygnujemy), wyślij żądanie anulowania
         if (!is_publisher && subscription_action == 0) {
             printf("Wysyłanie żądania rezygnacji z nasłuchu przed zamknięciem...\n");
-            Subscribe(target_id, 1); // 1 = stop
-            sleep(1); // Czekaj na wysłanie
+            Subscribe(target_id, 1);
         }
         close(tcp_conn_socket);
         tcp_conn_socket = -1;
@@ -131,7 +127,7 @@ void Disconnect() {
     }
 }
 
-// Funkcja Publish - wysyła dane do serwera
+// Funkcja Publish, składanie danych z czujnika do wysłania na serwer
 void Publish(uint16_t temp, uint16_t humidity) {
     if (tcp_conn_socket < 0) return;
     
@@ -140,7 +136,6 @@ void Publish(uint16_t temp, uint16_t humidity) {
     data.temperature = htons(temp);
     data.humidity = htons(humidity);
     
-    // Wysyłaj w odpowiedniej kolejności: ID, temp, humidity
     uint8_t buffer[BUFSIZE];
     buffer[0] = data.id;
     memcpy(&buffer[1], &data.temperature, 2);
@@ -149,7 +144,7 @@ void Publish(uint16_t temp, uint16_t humidity) {
     send(tcp_conn_socket, buffer, sizeof(buffer), 0);
 }
 
-// Funkcja Subscribe - wysyła żądanie subskrypcji/anulowania
+// Funkcja Subscribe, podjęcie roli subscribera i informoanie serwera o potrzebie zaopatryania w dane
 void Subscribe(uint8_t target_id, uint8_t action) {
     if (tcp_conn_socket < 0) return;
     
@@ -158,7 +153,6 @@ void Subscribe(uint8_t target_id, uint8_t action) {
     req.target_id = target_id;
     req.action = action; // 0=start, 1=stop
     
-    // Wysyłaj w odpowiedniej kolejności
     uint8_t buffer[BUFSIZE];
     buffer[0] = req.special_id;
     buffer[1] = req.target_id;
@@ -177,7 +171,7 @@ void Subscribe(uint8_t target_id, uint8_t action) {
     }
 }
 
-// Funkcja HandleIncomingData - odbiera i przetwarza dane z serwera
+// Funkcja HandleIncomingData, odbieranie danych z serwera, funkcja dla dla subscriberów
 void HandleIncomingData() {
     if (tcp_conn_socket < 0) return;
     
@@ -185,19 +179,20 @@ void HandleIncomingData() {
     fd_set readfds;
     struct timeval tv;
     
-    // Sprawdź czy są dane do odczytu
+    // Sprawdzanie dostępności danych do odczytu
     FD_ZERO(&readfds);
     FD_SET(tcp_conn_socket, &readfds);
     tv.tv_sec = 0;
     tv.tv_usec = 10000; // 10ms
-    
+
+    // Czekanie i sprawdzanie deskryptorów czy są już gotowe gniazda do odczytu danych
     int activity = select(tcp_conn_socket + 1, &readfds, NULL, NULL, &tv);
-    
+
+    // Jeżeli deksryptor jest gotowy do odczytu i jest to nasze gniazdo TCP, to wykonujemy zaczyt do naszej struktury
     if (activity > 0 && FD_ISSET(tcp_conn_socket, &readfds)) {
         int n = recv(tcp_conn_socket, &data, sizeof(SensorData), 0);
         
         if (n == sizeof(SensorData)) {
-            // Konwersja z sieciowej kolejności bajtów
             data.temperature = ntohs(data.temperature);
             data.humidity = ntohs(data.humidity);
             
