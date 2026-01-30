@@ -16,7 +16,7 @@
 #include "simple_MQTT.h"
 #include "dht11.h"
 
-// Zmienne globalne
+// Zmienne globalne do obsługi połączenia oraz rodzaju klienta
 int tcp_conn_socket = -1;
 int udp_socket = -1;
 bool is_running = true;
@@ -25,14 +25,14 @@ uint8_t target_id = 0;
 uint8_t subscription_action = 0;
 bool is_publisher = false;
 
-void SignalHandler(int sig);
+void SignalHandler(int sig); // Własna funkcja do obługi sygnałów
 
 int main(int argc, char *argv[]) {
-    // Rejestracja handlera sygnałów
+    // Przypisanie wlasnej funkcji do obsługi sygnałów od "CTRL+C" i kill
     signal(SIGINT, SignalHandler);
     signal(SIGTERM, SignalHandler);
     
-    // Parsowanie argumentów
+    // Pierwsze sprawdzenie liczby podanych argumentów
     if (argc < 2) {
         fprintf(stderr, "Użycie:\n");
         fprintf(stderr, "  %s <ID>                 - publikuj dane z podanym ID (hex)\n", argv[0]);
@@ -41,11 +41,11 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
-    // Konwersja ID z hex
+    // Konwersja ID podanego przy starcie do uint8_t
     uint8_t id1 = (uint8_t)strtol(argv[1], NULL, 0);
-    
+
+    // Sprawdzenie czy podane ID nie jest specjalnym ID subscribera
     if (id1 != SPECIAL_LISTEN_ID) {
-        // Tryb publikowania - wymagany 1 argument dodatkowy
         if (argc != 2) {
             fprintf(stderr, "Błąd: Dla trybu publikowania wymagany jest tylko 1 argument\n");
             fprintf(stderr, "Użycie: %s <ID>\n", argv[0]);
@@ -56,8 +56,7 @@ int main(int argc, char *argv[]) {
         client_id = id1;
         printf("Klient publikujący z ID: 0x%02X\n", client_id);
         
-        // Inicjalizacja wiringPi i czujnika DHT11 - ZMIENIONE NA GPIO5
-        printf("Inicjalizacja czujnika DHT11 z biblioteką libdriver...\n");
+        // Podanie pinu na którym następuje zaczytanie danych z czujnika
         printf("Pin DHT11: GPIO%d (fizyczny pin 29)\n", DHT11_PIN);
         
         if (DHT11_Init() != 0) {
@@ -66,13 +65,12 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "1. Czujnik DHT11 jest podłączony do pinu GPIO%d (fizyczny pin 29)\n", DHT11_PIN);
             fprintf(stderr, "2. Jest podłączony rezystor 10kΩ między DATA a 3.3V\n");
             fprintf(stderr, "3. Program jest uruchomiony z uprawnieniami sudo\n");
-            fprintf(stderr, "4. Biblioteka wiringPi jest zainstalowana\n");
             return 1;
         }
-        printf("Czujnik DHT11 zainicjalizowany pomyślnie z biblioteką libdriver\n");
+        printf("Czujnik DHT11 zainicjalizowany pomyślnie\n")
         printf("Wykonam 2 testowe odczyty przed rozpoczęciem publikacji...\n");
         
-        // Wykonaj testowe odczyty
+        // Odczyt testowy, ostateczne sprawdenie czy cokolwiek czyta i działa
         for (int i = 0; i < 2; i++) {
             float test_temp, test_humidity;
             if (DHT11_ReadSensor(&test_temp, &test_humidity) == 0) {
@@ -80,11 +78,10 @@ int main(int argc, char *argv[]) {
             } else {
                 printf("  Test %d: BŁĄD (używane będą wartości domyślne)\n", i+1);
             }
-            if (i < 1) sleep(2); // DHT11 wymaga 2s między odczytami
+            if (i < 1) sleep(2); // Przerwa między odczytami zgodnie z datasheetem
         }
         printf("\n");
     } else {
-        // Tryb nasłuchiwania - wymagane 3 argumenty dodatkowe (razem 4)
         if (argc != 4) {
             fprintf(stderr, "Błąd: Dla trybu nasłuchiwania wymagane są 3 argumenty\n");
             fprintf(stderr, "Użycie: %s 0xFF <ID> <akcja>\n", argv[0]);
@@ -96,9 +93,8 @@ int main(int argc, char *argv[]) {
         client_id = SPECIAL_LISTEN_ID;
         target_id = (uint8_t)strtol(argv[2], NULL, 0);
         
-        // Sprawdzenie akcji
         subscription_action = (uint8_t)strtol(argv[3], NULL, 0);
-        if (subscription_action > 1) {
+        if (subscription_action > 1 || subscription_action < 0) {
             fprintf(stderr, "Błąd: Nieprawidłowa akcja. Akceptowane wartości: 0 (start) lub 1 (stop)\n");
             return 1;
         }
@@ -110,7 +106,7 @@ int main(int argc, char *argv[]) {
         }
     }
     
-    // Połączenie z serwerem
+    // Wyszukiwanie i łączenie z serwerem
     printf("Łączenie z serwerem MQTT...\n");
     if (Connect() != 0) {
         fprintf(stderr, "Nie udało się połączyć z serwerem\n");
@@ -119,108 +115,89 @@ int main(int argc, char *argv[]) {
     
     printf("Połączono z serwerem MQTT\n");
     
-    // Wysłanie żądania subskrypcji (jeśli dotyczy)
+    // Wstępna inicjalizacja subscribera
     if (!is_publisher) {
         if (subscription_action == 0){
             Subscribe(target_id, subscription_action);
         }
-        // Jeśli rezygnujemy z nasłuchu, to od razu kończymy
         if (subscription_action == 1) {
             printf("Żądanie rezygnacji z nasłuchu wysłane. Zamykanie...\n");
-            sleep(1); // Czekaj na potwierdzenie
             Disconnect();
             printf("Klient zakończył działanie\n");
             return 0;
         }
     }
     
-    // Główna pętla programu
+    // Wejście w pętle publishera lub subscribera
     if (is_publisher) {
         // Tryb publikowania - odczytuj dane z czujnika i wysyłaj
         printf("\n=== ROZPOCZYNANIE PUBLIKACJI DANYCH ===\n");
-        printf("Czujnik: DHT11 (libdriver)\n");
+        printf("Czujnik: DHT11\n");
         printf("ID klienta: 0x%02X\n", client_id);
         printf("Pin GPIO: %d (fizyczny pin 29)\n", DHT11_PIN);
         printf("Interwał odczytu: %d sekund\n", DHT11_WAIT_TIME);
         printf("Naciśnij Ctrl+C aby zakończyć\n");
         printf("=====================================\n\n");
-        
+
+        // Inicjalizacja zmiennych do zapisu danych pomiarowych oraz sprawdzania działania programu
         time_t last_read_time = 0;
         int successful_reads = 0;
         int failed_reads = 0;
         float last_temperature = 25.0f;
         float last_humidity = 50.0f;
         
-        // Poczekaj chwilę przed rozpoczęciem
-        sleep(1);
-        
         while (is_running) {
             float temperature_c = 0.0f;
             float humidity_percent = 0.0f;
             
-            // Sprawdź, czy minęło wystarczająco czasu od ostatniego odczytu DHT11
+            // Sprawdzanie, czy możliwy już jest kolejny odczyt (czas między pomiarami dla DHT11)
             time_t current_time = time(NULL);
             if (current_time - last_read_time >= DHT11_WAIT_TIME) {
                 
-                // Odczyt danych z czujnika DHT11 (nowa biblioteka)
                 int read_result = DHT11_ReadSensor(&temperature_c, &humidity_percent);
                 
                 if (read_result == 0) {
-                    // Sukces odczytu
                     successful_reads++;
-                    printf("[%s] Odczyt #%d: Temp=%.1f°C, Wilgotność=%.1f%%\n", 
-                           ctime(&current_time), successful_reads, temperature_c, humidity_percent);
-                    
-                    // Zapamiętaj ostatnie poprawne wartości
+                    printf("[%s] Odczyt #%d: Temp=%.1f°C, Wilgotność=%.1f%%\n", ctime(&current_time), successful_reads, temperature_c, humidity_percent);
                     last_temperature = temperature_c;
                     last_humidity = humidity_percent;
                     last_read_time = current_time;
                     
                 } else {
-                    // Błąd odczytu - użyj ostatnich poprawnych wartości
                     failed_reads++;
-                    fprintf(stderr, "[%s] BŁĄD odczytu #%d! Używam ostatnich poprawnych wartości\n", 
-                            ctime(&current_time), failed_reads);
-                    
+                    fprintf(stderr, "[%s] BŁĄD odczytu #%d! Używam ostatnich poprawnych wartości\n", ctime(&current_time), failed_reads);
                     temperature_c = last_temperature;
                     humidity_percent = last_humidity;
                     last_read_time = current_time;
                 }
                 
-                // Przeliczanie jednostek
-                // Temperatura: stopnie Celsjusza * 10 (dokładność 0.1°C)
+                // Przeliczanie otrzymanych wartości na poprawną temperaturę i wilgotność
                 uint16_t temp_int = (uint16_t)(temperature_c * 10.0f);
-                // Wilgotność: procenty * 10 (dokładność 0.1%)
                 uint16_t humidity_int = (uint16_t)(humidity_percent * 10.0f);
                 
-                // Ograniczenie wartości do zakresu (0-1000 = 0-100%)
                 if (humidity_int > 1000) humidity_int = 1000;
                 
-                // Wyślij dane do serwera MQTT
                 Publish(temp_int, humidity_int);
                 
-                printf("  Wysłano do serwera: ID=0x%02X | Temp=%.1f°C | Humidity=%.1f%%\n",
-                       client_id, temperature_c, humidity_percent);
-                printf("  Statystyka: %d poprawnych, %d błędów\n\n", 
-                       successful_reads, failed_reads);
+                printf("  Wysłano do serwera: ID=0x%02X | Temp=%.1f°C | Humidity=%.1f%%\n", client_id, temperature_c, humidity_percent);
+                printf("  Statystyka: %d poprawnych, %d błędów\n\n", successful_reads, failed_reads);
                 
-                // Jeśli mamy 5 kolejnych błędów, wyświetl ostrzeżenie
                 if (failed_reads >= 5 && failed_reads % 5 == 0) {
                     fprintf(stderr, "\nOSTRZEŻENIE: %d kolejnych błędów odczytu DHT11!\n", failed_reads);
                     fprintf(stderr, "   Sprawdź podłączenie czujnika i zasilanie.\n\n");
                 }
                 
             } else {
-                // Czekaj do następnego odczytu
+                // Oczekiwanie na wywołanie następnego odczytu w razie za krótkiej przerwy
                 usleep(100000); // 100ms
                 continue;
             }
             
-            // Krótka przerwa przed następną iteracją
+            // Przerwa przed następnym wywołaniem
             usleep(50000); // 50ms
         }
         
-        // Podsumowanie po zakończeniu
+        // Podsumowanie działania klienta po zamknięciu
         printf("\n=== PODSUMOWANIE ===\n");
         printf("Zakończono publikację danych\n");
         printf("Łącznie odczytów: %d\n", successful_reads + failed_reads);
@@ -229,7 +206,7 @@ int main(int argc, char *argv[]) {
         printf("Ostatnie wartości: %.1f°C, %.1f%%\n", last_temperature, last_humidity);
         
     } else {
-        // Tryb nasłuchiwania - odbieraj dane
+        // Tryb subscribera, odczyt danych
         printf("\n=== ROZPOCZYNANIE NASŁUCHIWANIA ===\n");
         printf("Nasłuchiwanie danych dla ID: 0x%02X\n", target_id);
         printf("Naciśnij Ctrl+C aby zakończyć\n");
@@ -241,18 +218,17 @@ int main(int argc, char *argv[]) {
             HandleIncomingData();
             usleep(100000); // 100ms
             
-            // Wyświetl informację co 10 sekund, że nasłuchiwanie działa
+            // Wyświetl informację kontrolną co 10 sekund, poptwierdzającą działanie programu
             static time_t last_status_time = 0;
             time_t now = time(NULL);
             if (now - last_status_time >= 10) {
-                printf("[%s] Nasłuchiwanie aktywne... (odebrano: %d)\n", 
-                       ctime(&now), received_count);
+                printf("[%s] Nasłuchiwanie aktywne... (odebrano: %d)\n", ctime(&now), received_count);
                 last_status_time = now;
             }
         }
     }
     
-    // Rozłączenie
+    // Kończenie programu, zamknięcie gniazd
     printf("\nRozłączanie od serwera...\n");
     Disconnect();
     
@@ -265,13 +241,10 @@ int main(int argc, char *argv[]) {
 }
 
 
-// Handler sygnałów
+// Handler sygnałów "CTRL+C" oraz kill, zmienia stan zmiennej "is_running"
 void SignalHandler(int sig) {
     printf("\n\n=== OTRZYMANO SYGNAŁ ZAKOŃCZENIA ===\n");
     printf("Sygnał: %d\n", sig);
     printf("Kończenie pracy...\n");
     is_running = false;
-    
-    // Daj czas na bezpieczne zamknięcie
-    sleep(1);
 }
